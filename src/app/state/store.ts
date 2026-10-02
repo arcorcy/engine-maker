@@ -6,7 +6,8 @@ import { CAR, clampRpm, rpmFor, type Preset } from '../../engine/data/vehicle';
 
 export type Tab = 'parts' | 'fails';
 export type ColorMode = 'materials' | 'systems';
-export type InspectorTab = 'detail' | 'drive';
+export type InspectorTab = 'detail' | 'cycle' | 'drive';
+export type Side = 'intake' | 'exhaust';
 export type Isolation = { type: 'part'; id: string } | { type: 'sys'; id: SystemId } | null;
 
 interface ViewFlags {
@@ -35,6 +36,8 @@ export interface EngineState extends ViewFlags {
   fit: { ids: string[]; minRad: number; n: number };
   panels: { library: boolean; inspector: boolean };
   inspectorTab: InspectorTab;
+  /** Côté du moteur face à la caméra ; n change à chaque demande de rotation. */
+  side: { value: Side; n: number };
 }
 
 interface Actions {
@@ -60,6 +63,7 @@ interface Actions {
   fitView: () => void;
   togglePanel: (p: 'library' | 'inspector', open?: boolean) => void;
   setInspectorTab: (t: InspectorTab) => void;
+  setSide: (side: Side) => void;
   demoExplode: () => void;
   demoCycle: () => void;
 }
@@ -101,6 +105,7 @@ export const useEngine = create<EngineState & Actions>()((set, get) => {
     fit: { ids: ALL_IDS, minRad: 5, n: 0 },
     panels: { library: true, inspector: true },
     inspectorTab: 'detail',
+    side: { value: 'intake', n: 0 },
 
     setTab: (tab) => set({ tab, query: '' }),
     setQuery: (query) => set({ query }),
@@ -122,7 +127,8 @@ export const useEngine = create<EngineState & Actions>()((set, get) => {
           gas: !!sc.gas,
           play: !!sc.play,
           explode: sc.ex ?? 0,
-          ...fit(f.parts, 5),
+          ...fit([...f.parts, ...(sc.frame ?? [])], 5),
+          side: sc.view === 'exhaust' ? { value: 'exhaust', n: s.side.n + 1 } : s.side,
           panels: { ...s.panels, inspector: true },
           inspectorTab: 'detail',
         };
@@ -178,7 +184,10 @@ export const useEngine = create<EngineState & Actions>()((set, get) => {
     setSlow: (slow) => set({ slow }),
 
     fitView: () =>
-      set((s) => fit(s.fail ? FAIL[s.fail].parts : s.sel ? [s.sel] : visibleIds(s), 4.5)),
+      set((s) => {
+        const f = s.fail ? FAIL[s.fail] : null;
+        return fit(f ? [...f.parts, ...(f.scene.frame ?? [])] : s.sel ? [s.sel] : visibleIds(s), 4.5);
+      }),
 
     togglePanel: (p, open) =>
       set((s) => {
@@ -186,6 +195,7 @@ export const useEngine = create<EngineState & Actions>()((set, get) => {
         if (panels[p] === s.panels[p]) return {};
         return { panels, fit: { ...s.fit, n: s.fit.n + 1 } };
       }),
+    setSide: (value) => set((s) => ({ side: { value, n: s.side.n + 1 }, fit: { ...s.fit, n: s.fit.n + 1 } })),
     setInspectorTab: (inspectorTab) => set((s) => ({ inspectorTab, panels: { ...s.panels, inspector: true } })),
 
     demoExplode: () => set((s) => ({ explode: 1, ...fit(visibleIds(s), 5) })),
@@ -199,6 +209,16 @@ export interface Telemetry {
   psi: number;
   strokes: number[];
   pressures: number[];
+  /** Pression enregistrée sur le cycle de chaque cylindre : 4 × 180 cases de 4°. */
+  trace: number[];
+  /** Chaleur de chaque tubulure d'échappement, de 0 à 1 environ. */
+  heat: number[];
 }
 
-export const useTelemetry = create<Telemetry>()(() => ({ psi: 0, strokes: [0, 3, 1, 2], pressures: [1, 1, 1, 1] }));
+export const useTelemetry = create<Telemetry>()(() => ({
+  psi: 0,
+  strokes: [0, 3, 1, 2],
+  pressures: [1, 1, 1, 1],
+  trace: new Array(720).fill(1),
+  heat: [0, 0, 0, 0],
+}));

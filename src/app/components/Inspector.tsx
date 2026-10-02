@@ -4,12 +4,14 @@ import { FAIL, SEVERITY_LABEL, type Failure } from '../../engine/data/failures';
 import { PART, type Part } from '../../engine/data/parts';
 import { SYSTEM, SYSTEMS } from '../../engine/data/systems';
 import { useEngine, type InspectorTab } from '../state/store';
+import { Cycle } from './Cycle';
 import { Drive } from './Drive';
 import p from './Panel.module.css';
 import s from './Inspector.module.css';
 
 const TABS = [
   { value: 'detail', label: 'Fiche' },
+  { value: 'cycle', label: 'Cycle' },
   { value: 'drive', label: 'Conduite' },
 ] as const satisfies readonly { value: InspectorTab; label: string }[];
 
@@ -30,7 +32,7 @@ export function Inspector() {
         </div>
       </div>
       <div className={p.body} key={tab + (fail ?? sel ?? '')}>
-        {tab === 'drive' ? <Drive /> : fail ? <FailDetail f={FAIL[fail]} /> : sel ? <PartDetail part={PART[sel]} /> : <Welcome />}
+        {tab === 'drive' ? <Drive /> : tab === 'cycle' ? <Cycle /> : fail ? <FailDetail f={FAIL[fail]} /> : sel ? <PartDetail part={PART[sel]} /> : <Welcome />}
       </div>
     </Surface>
   );

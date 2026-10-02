@@ -16,6 +16,10 @@
     background-color var(--duration-base) var(--ease-out);
 }
 
+.neutral .bar {
+  background: var(--color-label-secondary);
+}
+
 .high .bar {
   background: var(--color-danger);
 }

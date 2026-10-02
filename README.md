@@ -1,6 +1,6 @@
 # Anatomie moteur
 
-Visualiseur 3D d'un moteur 4 cylindres en ligne, 16 soupapes : pièces, pannes classiques, cycle à quatre temps avec gaz et pressions, véhicule simulé. Interface minimaliste dans l'esprit Apple, construite sur un design system documenté dans Storybook.
+Visualiseur 3D d'un moteur 4 cylindres en ligne, 16 soupapes : pièces, pannes classiques, cycle à quatre temps avec gaz et pressions, échappement jusqu'au catalyseur, véhicule simulé. Interface minimaliste dans l'esprit Apple, construite sur un design system documenté dans Storybook.
 
 ## Démarrer
 
@@ -28,6 +28,12 @@ src/
 ```
 
 La scène 3D est impérative : React ne la re-rend jamais. Elle lit l'état du store à chaque image et publie la télémétrie (angle, temps, pressions) environ dix fois par seconde dans un second store.
+
+## Gaz et échappement
+
+Les particules de gaz changent de teinte selon leur composition (mélange frais, combustion, gaz brûlés) ; leur taille et leur éclat suivent la pression. Soupape d'échappement ouverte, elles quittent le cylindre avec un débit qui dépend de la levée, de la pression restante (la bouffée) et de la remontée du piston (le refoulement), puis suivent le trajet tubulure, descente, catalyseur, sortie. Le collecteur et le catalyseur passent en verre quand les gaz sont affichés, et chaque bouffée réchauffe la tubulure de son cylindre.
+
+L'onglet Cycle de l'inspecteur montre l'épure de distribution, les levées et la pression relevée en direct, le calage et la chaleur des tubulures. Le bouton orbite de la barre d'outils tourne la vue côté échappement. Trois pannes produisent une fumée en sortie : blanche (joint de culasse), bleutée (segments), noire (mélange trop riche).
 
 ## Design system
 

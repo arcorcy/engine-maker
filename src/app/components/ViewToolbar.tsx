@@ -61,6 +61,12 @@ export function ViewToolbar() {
         </ToolbarGroup>
         <ToolbarSeparator />
         <ToolbarGroup>
+          <IconButton
+            icon="orbit"
+            label={st.side.value === 'exhaust' ? 'Voir côté admission' : 'Voir côté échappement'}
+            pressed={st.side.value === 'exhaust'}
+            onClick={() => st.setSide(st.side.value === 'exhaust' ? 'intake' : 'exhaust')}
+          />
           <IconButton icon="fit" label="Recadrer" onClick={st.fitView} />
           <IconButton icon="reset" label="Tout afficher" className={s.optional} onClick={st.showAll} />
         </ToolbarGroup>

@@ -17,6 +17,44 @@ export const HEADBOT = 2.09;
 export const INTAKE_PEAK = 105;
 export const EXHAUST_PEAK = 615;
 
+/* Tracé de l'échappement, partagé par la géométrie et le trajet des gaz */
+const RUNNER = (x: number) => [[x, 2.45, -0.55], [x, 2.45, -0.9], [x * 0.6, 2.0, -1.15], [x * 0.15, 1.55, -1.3]];
+const DOWNPIPE = [[0, 1.55, -1.3], [0, 0.8, -1.32], [0.5, 0.1, -1.35], [1.9, -0.2, -1.35]];
+const OUTLET = [[3.7, -0.2, -1.35], [4.1, -0.22, -1.35], [4.5, -0.3, -1.35], [4.75, -0.34, -1.35]];
+/** Bout du tuyau de sortie, dans le repère de la pièce « catalyseur ». */
+export const TAILPIPE: [number, number, number] = [4.75, -0.34, -1.35];
+
+export interface ExhaustPath {
+  /** Points échantillonnés à abscisse curviligne régulière, avec un repère local et le rayon utile du conduit. */
+  pts: Float32Array;
+  nrm: Float32Array;
+  bin: Float32Array;
+  rad: Float32Array;
+  length: number;
+  samples: number;
+}
+
+/** Chemin des gaz brûlés du cylindre i : soupape, conduit de culasse, tubulure, descente, catalyseur, sortie. */
+function exhaustPath(i: number): ExhaustPath {
+  const x = XS[i];
+  const pts = [[x, HEADBOT - 0.06, -0.27], [x, 2.3, -0.42], ...RUNNER(x), ...DOWNPIPE.slice(1), [2.3, -0.2, -1.35], [2.9, -0.2, -1.35], [3.55, -0.2, -1.35], ...OUTLET];
+  const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(p[0], p[1], p[2])), false, 'centripetal');
+  const N = 240;
+  const frames = curve.computeFrenetFrames(N, false);
+  const P = new Float32Array((N + 1) * 3);
+  const NR = new Float32Array((N + 1) * 3);
+  const BN = new Float32Array((N + 1) * 3);
+  const R = new Float32Array(N + 1);
+  for (let k = 0; k <= N; k++) {
+    const v = curve.getPointAt(k / N);
+    P.set([v.x, v.y, v.z], k * 3);
+    NR.set([frames.normals[k].x, frames.normals[k].y, frames.normals[k].z], k * 3);
+    BN.set([frames.binormals[k].x, frames.binormals[k].y, frames.binormals[k].z], k * 3);
+    R[k] = v.z > -0.6 && v.y > 1.9 ? 0.07 : v.y > 1.5 ? 0.06 : v.x < 2.2 ? 0.1 : v.x < 3.6 ? 0.22 : 0.08;
+  }
+  return { pts: P, nrm: NR, bin: BN, rad: R, length: curve.getLength(), samples: N };
+}
+
 export interface EngineMaterial extends THREE.MeshStandardMaterial {
   userData: { looks: { materials: MatLook; systems: MatLook } };
 }
@@ -50,6 +88,8 @@ interface AddOpts {
   rot?: V3;
   /** Finition d'un détail ; le détail est éclairci en mode systèmes. */
   fin?: Finish;
+  /** Matériau propre à ce maillage (pour l'animer seul, par exemple la chaleur d'une tubulure). */
+  key?: string;
 }
 
 export function buildEngine() {
@@ -63,9 +103,9 @@ export function buildEngine() {
     P[d.id] = { id: d.id, group: g, mats: [], cur: 1, cache: new Map() };
   });
 
-  function mat(id: string, fin?: Finish) {
+  function mat(id: string, fin?: Finish, own?: string) {
     const p = P[id];
-    const key = fin ?? '_';
+    const key = (fin ?? '_') + (own ?? '');
     let m = p.cache.get(key);
     if (!m) {
       const lk = looks(fin ?? PART_FINISH[id], SYSTEM[PARTS.find((x) => x.id === id)!.sys].color, !!fin);
@@ -82,7 +122,7 @@ export function buildEngine() {
   }
 
   function add(id: string, geo: THREE.BufferGeometry, pos?: V3 | null, o: AddOpts = {}) {
-    const m = new THREE.Mesh(geo, mat(id, o.fin));
+    const m = new THREE.Mesh(geo, mat(id, o.fin, o.key));
     m.userData.partId = id;
     if (pos) m.position.set(pos[0], pos[1], pos[2]);
     if (o.rot) m.rotation.set(o.rot[0], o.rot[1], o.rot[2]);
@@ -342,10 +382,10 @@ export function buildEngine() {
   add('injecteur', cylX(0.06, 3.6), [0, 3.05, 0.72], { fin: 'alu' });
 
   /* ----- Admission et échappement ----- */
-  XS.forEach((x) => {
+  XS.forEach((x, i) => {
     add('admission', tube([[x, 2.45, 0.55], [x, 2.45, 0.9], [x, 2.85, 1.25], [x, 3.4, 1.15]], 0.12));
     add('admission', box(0.42, 0.34, 0.08), [x, 2.45, 0.63]);
-    add('echappement', tube([[x, 2.45, -0.55], [x, 2.45, -0.9], [x * 0.6, 2.0, -1.15], [x * 0.15, 1.55, -1.3]], 0.09));
+    add('echappement', tube(RUNNER(x), 0.09), null, { key: `r${i}` });
     add('echappement', box(0.42, 0.34, 0.08), [x, 2.45, -0.63]);
   });
   add('admission', cylX(0.34, 3.9), [0, 3.65, 1.15]);
@@ -358,8 +398,22 @@ export function buildEngine() {
     g.rotation.y = 1.0;
     add('papillon', cyl(0.215, 0.215, 0.025, 28).rotateZ(Math.PI / 2), [0, 0, 0], { parent: g, fin: 'steel' });
   }
-  add('echappement', tube([[0, 1.55, -1.3], [0, 0.8, -1.32], [0.5, 0.1, -1.35], [1.9, -0.2, -1.35]], 0.14, 50));
+  add('echappement', tube(DOWNPIPE, 0.14, 50), null, { key: 'pipe' });
   add('echappement', cylX(0.2, 0.06), [1.95, -0.2, -1.35]);
+
+  /* Ligne d'échappement : catalyseur et tuyau de sortie (la ligne réelle continue sous la caisse) */
+  add('catalyseur', cylX(0.2, 0.06), [2.05, -0.2, -1.35], { fin: 'steelDark' });
+  add('catalyseur', cyl(0.14, 0.3, 0.32, 32).rotateZ(Math.PI / 2), [2.24, -0.2, -1.35], { key: 'cat' });
+  add('catalyseur', cylX(0.3, 1.0, 36), [2.9, -0.2, -1.35], { key: 'cat' });
+  add('catalyseur', cyl(0.3, 0.12, 0.32, 32).rotateZ(Math.PI / 2), [3.56, -0.2, -1.35], { key: 'cat' });
+  [2.55, 2.9, 3.25].forEach((x) => add('catalyseur', new THREE.TorusGeometry(0.305, 0.012, 8, 40).rotateY(Math.PI / 2), [x, -0.2, -1.35], { fin: 'steelDark' }));
+  add('catalyseur', tube(OUTLET, 0.11, 24), null, { key: 'cat' });
+  add('catalyseur', cylX(0.13, 0.05), [TAILPIPE[0] - 0.03, TAILPIPE[1], TAILPIPE[2]], { fin: 'steelDark' });
+  [[1.55, -0.12, -1.35, 0.12], [3.95, -0.2, -1.35, 0.09]].forEach(([x, y, z, dy]) => {
+    add('sonde_lambda', cyl(0.045, 0.045, 0.26, 16), [x, y + dy + 0.13, z]);
+    add('sonde_lambda', cyl(0.07, 0.07, 0.06, 6), [x, y + dy + 0.03, z], { fin: 'steel' });
+    add('sonde_lambda', cyl(0.035, 0.035, 0.16, 10), [x, y + dy + 0.34, z], { fin: 'black' });
+  });
 
   /* ----- Huile et refroidissement ----- */
   add('filtre', cylZ(0.24, 0.55), [-0.5, 0.35, 0.9]);
@@ -408,7 +462,14 @@ export function buildEngine() {
 
   const anim: Anim = { pist, ring, rod, valve, spring, gas, spin, crank, flywheel, pulley, camA, camE };
   const parts: Record<string, PartNode> = P;
-  return { root, parts, anim, gasGroup };
+  /* matériaux animés par la chaleur des gaz : une tubulure par cylindre, la descente, le catalyseur */
+  const heat = {
+    runners: XS.map((_, i) => P.echappement.cache.get(`_r${i}`)!),
+    pipe: P.echappement.cache.get('_pipe')!,
+    cat: P.catalyseur.cache.get('_cat')!,
+  };
+  const exhaust = XS.map((_, i) => exhaustPath(i));
+  return { root, parts, anim, gasGroup, heat, exhaust };
 }
 
 /* ----- Cinématique : bielle-manivelle, cames et levée de soupape ----- */

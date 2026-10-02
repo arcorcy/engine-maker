@@ -47,3 +47,13 @@ export const fmt = (n: number, d = 0) => n.toLocaleString('fr-FR', { maximumFrac
 export const STROKES = ['Admission', 'Compression', 'Combustion', 'Échappement'] as const;
 /** Couleurs des quatre temps, reprises dans le HUD et dans les gaz. */
 export const STROKE_COLORS = ['#30b0c7', '#007aff', '#ff9500', '#8e8e93'] as const;
+
+/** Composition des gaz, partagée par la simulation 3D et la légende de l'onglet Cycle. */
+export const GAS_COLORS = {
+  fresh: '#5ac8fa',
+  flame: '#ff9500',
+  burnt: '#a2968d',
+} as const;
+
+export const SMOKE_LABEL = { white: 'Fumée blanche', blue: 'Fumée bleutée', black: 'Fumée noire' } as const;
+export type Smoke = keyof typeof SMOKE_LABEL;

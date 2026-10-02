@@ -23,7 +23,7 @@ export const PART_FINISH: Record<string, Finish> = {
   piston: 'alu', segments: 'steelDark', bielle: 'steel', vilo: 'steel', volant: 'iron', poulie: 'iron',
   arb_adm: 'steel', arb_ech: 'steel', sou_adm: 'steel', sou_ech: 'steel', ressort: 'steel', courroie: 'rubber',
   bougie: 'steel', bobine: 'graphite', injecteur: 'steel',
-  admission: 'black', papillon: 'alu', echappement: 'exhaust',
+  admission: 'black', papillon: 'alu', echappement: 'exhaust', catalyseur: 'steel', sonde_lambda: 'steelDark',
   filtre: 'filter', pompe_huile: 'aluCast', pompe_eau: 'alu',
   alternateur: 'alu', courroie_acc: 'rubber',
 };

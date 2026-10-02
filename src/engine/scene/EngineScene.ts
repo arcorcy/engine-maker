@@ -7,7 +7,8 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { FAIL } from '../data/failures';
 import { PART, PARTS } from '../data/parts';
 import { isPartVisible, useEngine, useTelemetry, type EngineState } from '../../app/state/store';
-import { cycleAngle, buildEngine, setPose, type PartNode } from './model';
+import { cycleAngle, buildEngine, setPose, TAILPIPE, type PartNode } from './model';
+import { SmokeSim } from './smoke';
 import { GasSim } from './gas';
 import { PANEL } from '../../app/layout';
 
@@ -15,6 +16,11 @@ const D2R = Math.PI / 180;
 const ease = (t: number) => t * t * (3 - 2 * t);
 const C_BLACK = new THREE.Color(0x000000);
 const C_WHITE = new THREE.Color(0xffffff);
+const C_HEAT = new THREE.Color('#ff4a12');
+/** Pièces rendues en verre quand les gaz sont affichés, pour voir l'échappement circuler dedans. */
+const GLASS = ['echappement', 'catalyseur'];
+const TH_INTAKE = -0.62;
+const TH_EXHAUST = Math.PI + 0.62;
 
 interface Cam {
   th: number;
@@ -57,6 +63,10 @@ export class EngineScene {
   private camera = new THREE.PerspectiveCamera(32, 1, 0.1, 400);
   private model = buildEngine();
   private gas: GasSim;
+  private smoke: SmokeSim;
+  /** Échauffement global de la ligne, lié au régime, qui suit lentement. */
+  private thermal = 0;
+  private tailpipe = new THREE.Vector3();
   private clip = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
   private shadow = contactShadow();
   private leader: THREE.LineSegments<THREE.BufferGeometry, THREE.LineBasicMaterial>;
@@ -70,7 +80,7 @@ export class EngineScene {
   private lastTelemetry = 0;
   private hoverTick = 0;
   private raf = 0;
-  private applied: { cut?: boolean; colorMode?: string; fitN?: number } = {};
+  private applied: { cut?: boolean; colorMode?: string; fitN?: number; sideN?: number } = {};
 
   private ptrs = new Map<number, { x: number; y: number; b: number; sh: boolean }>();
   private downAt: { x: number; y: number } | null = null;
@@ -108,8 +118,10 @@ export class EngineScene {
 
     const { root, parts, anim, gasGroup } = this.model;
     this.scene.add(root, this.shadow);
-    this.gas = new GasSim(anim);
-    gasGroup.add(this.gas.points);
+    this.gas = new GasSim(anim, this.model.exhaust);
+    gasGroup.add(this.gas.points, this.gas.exhaustPoints);
+    this.smoke = new SmokeSim(this.gas.uniforms.uPx);
+    this.scene.add(this.smoke.points);
 
     PARTS.forEach((d) => {
       const b = new THREE.Box3().setFromObject(parts[d.id].group);
@@ -144,6 +156,7 @@ export class EngineScene {
     const s = useEngine.getState();
     this.fitTo(s.fit.ids, s.fit.minRad, s);
     this.applied.fitN = s.fit.n;
+    this.applied.sideN = s.side.n;
     Object.assign(this.cam, this.goal);
     this.raf = requestAnimationFrame(this.frame);
   }
@@ -152,6 +165,7 @@ export class EngineScene {
     cancelAnimationFrame(this.raf);
     this.cleanups.forEach((f) => f());
     this.gas.dispose();
+    this.smoke.dispose();
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
       if (m.geometry) m.geometry.dispose();
@@ -196,10 +210,20 @@ export class EngineScene {
     });
   }
 
-  private targetOpacity(s: EngineState, id: string) {
-    if (s.fail) return FAIL[s.fail].parts.includes(id) ? 1 : 0.1;
-    if (s.sel) return id === s.sel ? 1 : s.iso ? (s.xray ? 0.35 : 1) : s.xray ? 0.08 : 0.28;
-    return s.xray ? 0.26 : 1;
+  private targetOpacity(s: EngineState, id: string, glass: boolean) {
+    let o: number;
+    if (s.fail) o = FAIL[s.fail].parts.includes(id) ? 1 : 0.1;
+    else if (s.sel) o = id === s.sel ? 1 : s.iso ? (s.xray ? 0.35 : 1) : s.xray ? 0.08 : 0.28;
+    else o = s.xray ? 0.26 : 1;
+    return glass && GLASS.includes(id) ? Math.min(o, o === 1 && (s.sel === id || s.fail) ? 0.5 : 0.3) : o;
+  }
+
+  /** Tourne la caméra vers le côté demandé, par le plus court chemin. */
+  private turnTo(side: 'intake' | 'exhaust') {
+    const base = side === 'exhaust' ? TH_EXHAUST : TH_INTAKE;
+    const k = Math.round((this.goal.th - base) / (Math.PI * 2));
+    this.goal.th = base + k * Math.PI * 2;
+    this.goal.ph = 1.2;
   }
 
   /* ---------- Caméra ---------- */
@@ -377,6 +401,42 @@ export class EngineScene {
     else if (s.sel || s.fail) s.clear();
   }
 
+  /* ---------- Chaleur et fumée ---------- */
+
+  private runnerGlow(h: number) {
+    return Math.min(1, 0.45 * this.thermal + 0.75 * h);
+  }
+
+  /** Lueur des tubulures, de la descente et du catalyseur ; les pièces surlignées gardent leur surbrillance. */
+  private applyHeat(s: EngineState, dt: number, free: Set<string>) {
+    const target = s.play ? 0.12 + (0.6 * s.rpm) / 6500 : this.thermal;
+    this.thermal += (target - this.thermal) * (1 - Math.exp(-dt * 0.3));
+    const { heat } = this.model;
+    const mean = this.gas.heat.reduce((a, b) => a + b, 0) / 4;
+    const set = (m: THREE.MeshStandardMaterial, v: number) => {
+      m.emissive.copy(C_HEAT);
+      m.emissiveIntensity = 1.25 * v * v;
+    };
+    if (free.has('echappement')) {
+      heat.runners.forEach((m, i) => set(m, this.runnerGlow(this.gas.heat[i])));
+      set(heat.pipe, Math.min(1, 0.4 * this.thermal + 0.35 * mean));
+    }
+    if (free.has('catalyseur')) set(heat.cat, Math.min(1, 0.3 * this.thermal + 0.2 * mean));
+  }
+
+  private stepSmoke(s: EngineState, dt: number, e: number) {
+    const kind = (s.fail && FAIL[s.fail].smoke) || null;
+    const on = kind && isPartVisible(s, 'catalyseur') ? kind : null;
+    if (!on && !this.smoke.active) {
+      this.smoke.points.visible = false;
+      return;
+    }
+    this.smoke.points.visible = true;
+    const o = PART.catalyseur.exp;
+    this.tailpipe.set(TAILPIPE[0] + o[0] * e, TAILPIPE[1] + o[1] * e, TAILPIPE[2] + o[2] * e);
+    this.smoke.step(dt, on, this.tailpipe, s.play ? 10 + s.rpm / 160 : 7);
+  }
+
   /* ---------- Boucle ---------- */
 
   private frame = (now: number) => {
@@ -392,6 +452,10 @@ export class EngineScene {
     if (s.colorMode !== this.applied.colorMode) {
       this.applyColorMode(s.colorMode);
       this.applied.colorMode = s.colorMode;
+    }
+    if (s.side.n !== this.applied.sideN) {
+      this.turnTo(s.side.value);
+      this.applied.sideN = s.side.n;
     }
     if (s.fit.n !== this.applied.fitN) {
       this.fitTo(s.fit.ids, s.fit.minRad, s);
@@ -415,6 +479,8 @@ export class EngineScene {
         psi: this.psi,
         strokes: [0, 1, 2, 3].map((i) => Math.floor(cycleAngle(this.psi, i) / 180)),
         pressures: this.gas.p.map((p) => Math.round(p)),
+        trace: Array.from(this.gas.trace),
+        heat: this.gas.heat.map((h) => this.runnerGlow(h)),
       });
     }
 
@@ -425,6 +491,8 @@ export class EngineScene {
     const kf = 1 - Math.exp(-dt * 8);
     const pulse = 0.5 + 0.5 * Math.sin(now / 260);
     gasGroup.visible = s.gas && isPartVisible(s, 'piston') && this.exC < 0.05;
+    const glass = gasGroup.visible;
+    const hot = new Set<string>();
     this.shadow.position.y = -1.2 - 2.6 * e;
 
     const failParts = s.fail ? FAIL[s.fail].parts : null;
@@ -434,7 +502,7 @@ export class EngineScene {
       const p: PartNode = parts[d.id];
       const vis = isPartVisible(s, d.id);
       p.group.position.set(d.exp[0] * e, d.exp[1] * e, d.exp[2] * e);
-      const tgt = vis ? this.targetOpacity(s, d.id) : 0;
+      const tgt = vis ? this.targetOpacity(s, d.id, glass) : 0;
       p.cur += (tgt - p.cur) * kf;
       p.group.visible = p.cur > 0.012;
       const isSel = s.sel === d.id;
@@ -443,6 +511,7 @@ export class EngineScene {
       const col = isFail ? this.danger : this.accent;
       const em = isFail ? 0.22 + 0.28 * pulse : isSel ? 0.28 + 0.08 * pulse : isHov ? 0.12 : 0;
       const tint = isFail ? 0.45 : isSel ? 0.35 : 0;
+      if (!em) hot.add(d.id);
       p.mats.forEach((m) => {
         m.opacity = p.cur;
         m.transparent = p.cur < 0.995;
@@ -458,6 +527,8 @@ export class EngineScene {
       lp.set(show ? [c.x, c.y, c.z, c.x + o[0] * e, c.y + o[1] * e, c.z + o[2] * e] : [0, 0, 0, 0, 0, 0], i * 6);
     });
     this.leader.geometry.attributes.position.needsUpdate = true;
+    this.applyHeat(s, dt, hot);
+    this.stepSmoke(s, dt, e);
 
     (Object.keys(this.cam) as (keyof Cam)[]).forEach((k) => {
       this.cam[k] += (this.goal[k] - this.cam[k]) * kf;

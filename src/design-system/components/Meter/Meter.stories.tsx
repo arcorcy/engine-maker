@@ -14,3 +14,4 @@ type Story = StoryObj<typeof meta>;
 
 export const Normal: Story = {};
 export const ZoneRouge: Story = { args: { value: 6400 } };
+export const Neutre: Story = { args: { label: 'Chaleur', tone: 'neutral', value: 0.5, min: 0, max: 1, high: 0.8 } };

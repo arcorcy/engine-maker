@@ -24,6 +24,17 @@ Les valeurs sémantiques se lisent avec `var(--color-…)`. Basculez le thème d
   <ColorItem title="Succès" colors={{ success: 'var(--color-success)' }} />
 </ColorPalette>
 
+## Graphiques
+
+Deux séries au plus par graphique, une couleur par entité (admission, échappement), jamais par rang. Les paires ont été vérifiées avec un validateur de palette : écart perceptuel suffisant pour les trois formes de daltonisme et contraste d'au moins 3:1 sur le fond, dans chaque thème. La pression, série unique, a sa propre teinte.
+
+<ColorPalette>
+  <ColorItem title="Admission" subtitle="--color-chart-intake" colors={{ intake: 'var(--color-chart-intake)' }} />
+  <ColorItem title="Échappement" subtitle="--color-chart-exhaust" colors={{ exhaust: 'var(--color-chart-exhaust)' }} />
+  <ColorItem title="Pression" subtitle="--color-chart-pressure" colors={{ pressure: 'var(--color-chart-pressure)' }} />
+  <ColorItem title="Grille" subtitle="--color-chart-grid" colors={{ grid: 'var(--color-chart-grid)' }} />
+</ColorPalette>
+
 ## Systèmes mécaniques
 
 Identiques dans les deux thèmes, partagées avec le rendu 3D (mode « Systèmes ») via `systemColors` dans `tokens/index.ts`.

@@ -130,6 +130,12 @@
 
   --color-focus: rgba(0, 113, 227, 0.45);
 
+  /* Graphiques : paires validées pour la vision des couleurs et le contraste, par thème */
+  --color-chart-intake: #1a9fb8;
+  --color-chart-exhaust: #e8710a;
+  --color-chart-pressure: #5e5ce6;
+  --color-chart-grid: rgba(0, 0, 0, 0.07);
+
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.05);
   --shadow-lg: 0 18px 50px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05);
@@ -174,6 +180,11 @@
 
     --color-focus: rgba(10, 132, 255, 0.6);
 
+    --color-chart-intake: #1c97ad;
+    --color-chart-exhaust: #d96f0c;
+    --color-chart-pressure: #7d7aff;
+    --color-chart-grid: rgba(255, 255, 255, 0.08);
+
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
     --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.45);
     --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.6);
@@ -216,6 +227,11 @@
   --color-success: var(--p-green-dark);
 
   --color-focus: rgba(10, 132, 255, 0.6);
+
+  --color-chart-intake: #1c97ad;
+  --color-chart-exhaust: #d96f0c;
+  --color-chart-pressure: #7d7aff;
+  --color-chart-grid: rgba(255, 255, 255, 0.08);
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
   --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.45);

@@ -1,0 +1,155 @@
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-5) var(--space-5) var(--space-6);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.head > :last-child {
+  width: 168px;
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.dial {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  margin: 0 auto;
+  overflow: visible;
+}
+
+.chart {
+  position: relative;
+  touch-action: none;
+}
+
+.chart svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+
+.axis {
+  font: 500 10px/1 var(--font-text);
+  fill: var(--color-label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.label {
+  font: 600 10px/1 var(--font-text);
+  fill: var(--color-label-secondary);
+}
+
+.strong {
+  font: 600 13px/1 var(--font-text);
+  fill: var(--color-label);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font: var(--text-footnote);
+  color: var(--color-label-secondary);
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.legend i.line {
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.tip {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  min-width: 132px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-md);
+  border: 0.5px solid var(--color-separator);
+  font: var(--text-footnote);
+  pointer-events: none;
+}
+
+.tip b {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.tip div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.tip div span {
+  margin-left: auto;
+  color: var(--color-label);
+  font-weight: 500;
+}
+
+.tip i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.timing {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+  margin: 0;
+  font: var(--text-footnote);
+}
+
+.timing dt {
+  color: var(--color-label-secondary);
+}
+
+.timing dd {
+  margin: 0;
+  color: var(--color-label);
+  font-weight: 500;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.heat {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px 12px;
+  font: var(--text-footnote);
+  color: var(--color-label-secondary);
+}

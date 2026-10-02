@@ -1,8 +1,14 @@
+import type { Smoke } from "./vehicle";
+
 export type Severity = 1 | 2 | 3 | 4;
 
 export const SEVERITY_LABEL: Record<Severity, string> = { 1: "Faible", 2: "Moyenne", 3: "Élevée", 4: "Critique" };
 
 export interface FailureScene {
+  /** Oriente la caméra côté échappement. */
+  view?: 'exhaust';
+  /** Pièces ajoutées au cadrage sans être surlignées (par exemple la sortie de la ligne pour voir la fumée). */
+  frame?: string[];
   xray?: boolean;
   cut?: boolean;
   gas?: boolean;
@@ -20,6 +26,8 @@ export interface Failure {
   parts: string[];
   /** Réglages de vue appliqués à l'ouverture de la panne. */
   scene: FailureScene;
+  /** Fumée visible en sortie d'échappement. */
+  smoke?: Smoke;
   symptoms: string[];
   causes: string[];
   diag: string[];
@@ -30,7 +38,7 @@ export interface Failure {
 export const FAILS: Failure[] = [
  { id:'joint', name:'Joint de culasse claqué', sev:4,
    short:'Fumée blanche, liquide de refroidissement qui baisse, huile laiteuse.',
-   parts:['joint','culasse','bloc'], scene:{ xray:true, ex:0.35 },
+   parts:['joint','culasse','bloc'], scene:{ xray:true, play:true, frame:['catalyseur'] }, smoke:'white',
    symptoms:['Fumée blanche épaisse et sucrée à l\'échappement','Niveau de liquide de refroidissement qui baisse sans fuite visible','Huile couleur café au lait sous le bouchon de remplissage','Bulles dans le vase d\'expansion moteur tournant, surchauffe'],
    causes:['Surchauffe prolongée qui déforme la culasse','Serrage de culasse ou joint monté sans respect du couple','Âge et kilométrage, joint fatigué'],
    diag:['Contrôler la couleur de l\'huile et du liquide','Test de fumées de combustion dans le liquide de refroidissement','Mesurer la compression cylindre par cylindre','Contrôler la planéité de la culasse à la règle'],
@@ -54,7 +62,7 @@ export const FAILS: Failure[] = [
    drive:'À éviter. Le carburant non brûlé endommage le catalyseur en quelques centaines de kilomètres.' },
  { id:'segments', name:'Consommation d\'huile et segments usés', sev:3,
    short:'Fumée bleutée, niveau d\'huile qui baisse, bougies grasses.',
-   parts:['segments','piston','bloc'], scene:{ cut:true, gas:true },
+   parts:['segments','piston','bloc'], scene:{ cut:true, gas:true, play:true, frame:['catalyseur'] }, smoke:'blue',
    symptoms:['Fumée bleutée surtout au démarrage ou en décélération','Plus d\'un litre d\'huile consommé aux 1000 km','Bougies noires et grasses','Compression faible sur un ou plusieurs cylindres'],
    causes:['Segments collés par la calamine ou usés','Paroi du cylindre rayée ou ovalisée','Joints de queue de soupape durcis (fumée au démarrage seulement)','Entretien espacé, huile inadaptée'],
    diag:['Test de compression sec puis humide : si l\'huile améliore la valeur, ce sont les segments','Contrôler le niveau d\'huile à intervalle régulier','Endoscopie des cylindres'],
@@ -115,7 +123,23 @@ export const FAILS: Failure[] = [
    causes:['Joint de cache-culbuteurs durci par la chaleur','Joints de puits de bougies fatigués','Vis de fixation desserrées'],
    diag:['Nettoyer le moteur puis chercher l\'origine de la trace','Retirer une bobine et regarder si le puits est noyé d\'huile'],
    fix:'Remplacer le joint de cache-culbuteurs et les joints de puits de bougies, nettoyer les bobines.',
-   drive:'Possible, avec contrôle du niveau d\'huile. À traiter avant que l\'huile ne détruise les bobines.' }
+   drive:'Possible, avec contrôle du niveau d\'huile. À traiter avant que l\'huile ne détruise les bobines.' },
+ { id:'catalyseur', name:'Catalyseur colmaté ou fondu', sev:3,
+   short:'Perte de puissance qui s\'aggrave, odeur d\'œuf pourri, bruit de cailloux sous la voiture.',
+   parts:['catalyseur','sonde_lambda','echappement'], scene:{ gas:true, play:true, view:'exhaust' },
+   symptoms:['Perte de puissance progressive, surtout en montée et à haut régime','Odeur d\'œuf pourri (soufre) à l\'échappement','Bruit de cailloux qui roulent sous le véhicule : le monolithe est cassé','Voyant moteur, code P0420 : efficacité du catalyseur insuffisante','Catalyseur anormalement chaud, parfois rouge sombre après un trajet'],
+   causes:['Ratés d\'allumage prolongés : le carburant imbrûlé brûle dans le catalyseur et le fait fondre','Consommation d\'huile qui encrasse le monolithe','Mélange trop riche pendant longtemps (sonde lambda, injecteur)','Choc thermique ou mécanique, vieillissement'],
+   diag:['Lire les codes défaut et comparer les signaux des deux sondes lambda','Mesurer la contre-pression à l\'échappement','Comparer au thermomètre infrarouge la température en entrée et en sortie du catalyseur','Taper légèrement l\'enveloppe pour entendre un monolithe cassé'],
+   fix:'Traiter d\'abord la cause (ratés, huile, mélange), puis remplacer le catalyseur. Un catalyseur neuf détruit par la même cause ne tient que quelques milliers de kilomètres.',
+   drive:'À limiter. Bouché, le catalyseur étouffe le moteur et le fait chauffer. Fondu, il peut l\'empêcher de démarrer.' },
+ { id:'riche', name:'Mélange trop riche', sev:2,
+   short:'Fumée noire, odeur d\'essence, consommation en forte hausse.',
+   parts:['sonde_lambda','injecteur','catalyseur'], scene:{ gas:true, play:true, view:'exhaust' }, smoke:'black',
+   symptoms:['Fumée noire à l\'accélération','Forte odeur d\'essence à l\'échappement','Consommation en nette hausse','Bougies noires et sèches, couvertes de suie','Ralenti irrégulier, voyant moteur'],
+   causes:['Sonde lambda amont paresseuse ou hors service : le calculateur enrichit à l\'aveugle','Injecteur qui fuit ou reste ouvert','Pression d\'essence trop élevée (régulateur)','Capteur de température qui indique un moteur froid en permanence'],
+   diag:['Lire les corrections de richesse : très négatives, elles montrent que le calculateur tente d\'appauvrir','Observer le signal de la sonde amont : il doit osciller rapidement autour de 0,45 V','Contrôler la pression d\'essence et l\'étanchéité des injecteurs','Vérifier la valeur lue par le capteur de température'],
+   fix:'Remplacer la sonde ou l\'injecteur en cause, puis contrôler l\'état du catalyseur.',
+   drive:'Possible sur une courte distance. Prolongé, l\'excès d\'essence surchauffe et détruit le catalyseur.' }
 ];
 
 export const FAIL: Record<string, Failure> = Object.fromEntries(FAILS.map((f) => [f.id, f]));
