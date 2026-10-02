@@ -40,14 +40,18 @@ L'onglet Cycle de l'inspecteur montre l'épure de distribution, les levées et l
 ## Parcours
 
 1. **Accueil, « Mes moteurs »** (`#/`) : le tableau de bord des moteurs créés, avec cylindrée, cotes, rapport volumétrique, état de cohérence et date de modification. On y duplique et supprime les moteurs.
-2. **Nouveau moteur** : il part du 1.6 16 soupapes et s'ouvre directement en 3D (`#/moteurs/<id>`).
+2. **Nouveau moteur** : on choisit l'architecture (3, 4, 5 ou 6 cylindres en ligne, V6, V8, V10, V12 ou V16), le moteur est créé avec ses pièces d'origine et s'ouvre directement en 3D (`#/moteurs/<id>`).
 3. **Remplacer une pièce depuis la vue** : un clic sur une pièce, dans la maquette ou dans la liste, ouvre sa fiche. Elle montre la pièce montée et les remplacements possibles, chacun avec ses conséquences (pièces qui seront adaptées, variantes incompatibles grisées avec leur raison). La maquette se reconstruit avec les nouvelles cotes. L'onglet Moteur donne la fiche technique, le diagnostic, les réglages et la liste des pièces changées. ⌘Z annule.
 
 Le moteur de référence se consulte en lecture seule (`#/reference`). Les moteurs sont enregistrés automatiquement dans le navigateur (`LocalEngineRepository`) ; l'interface `EngineRepository` de `src/app/garage/repository.ts` est le point de branchement de Supabase.
 
+## Architectures
+
+Chaque modèle de départ (`src/engine/spec/catalog.ts`) part de cotes réelles (alésage, course, bielle, entraxe, rapport volumétrique visé, profil de came, régime). Sa famille de pièces est générée avec la même logique que celle du 1.6 : bloc réalésé, vilebrequins court et long, bielles courtes et longues, pistons haute compression, turbo, à axe remonté et cote réparation, joint épais, culasses rectifiée et préparée, cames sport et course, ressorts renforcés. Les pièces d'une architecture ne se montent que sur elle. Les tests vérifient que chaque modèle est cohérent d'origine et que les mêmes règles s'y appliquent.
+
 ## Maquette paramétrique
 
-`src/engine/scene/geometry.ts` convertit la spec en géométrie de maquette (alésage, course, longueur de bielle, hauteur de compression du piston, plan de joint, profils de came, ordre d'allumage, avance). Le modèle, la cinématique et les gaz ne contiennent plus de cote moteur ; la scène se reconstruit quand la spec change. La simulation des gaz reproduit le rapport volumétrique calculé.
+`src/engine/scene/geometry.ts` convertit la spec en géométrie de maquette : disposition (un banc vertical, ou deux bancs inclinés de ± la moitié de l'angle du V, le banc A dessiné en miroir pour garder l'admission dans le V), position des cylindres, alésage, course, longueur de bielle, hauteur de compression du piston, plan de joint, profils de came, ordre d'allumage, avance. En V, chaque cylindre a son maneton, et chaque banc a sa coupe, sa ligne d'échappement et son catalyseur. Le modèle, la cinématique et les gaz ne contiennent plus de cote moteur ; la scène se reconstruit quand la spec change. La simulation des gaz reproduit le rapport volumétrique calculé.
 
 ## Moteurs personnalisés : le cœur
 
