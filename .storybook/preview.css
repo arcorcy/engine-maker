@@ -1,0 +1,15 @@
+/* Le canevas des stories suit le thème du design system */
+body.sb-show-main {
+  background: var(--color-bg);
+}
+.sb-main-padded {
+  padding: 2rem !important;
+}
+
+/* En mode documentation, les blocs d'exemple suivent aussi le thème choisi */
+.docs-story {
+  background: var(--color-bg) !important;
+}
+.docs-story > div:first-child {
+  background: transparent !important;
+}

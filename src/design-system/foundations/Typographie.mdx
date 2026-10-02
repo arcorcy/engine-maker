@@ -1,0 +1,27 @@
+import { Meta, Typeset } from '@storybook/addon-docs/blocks';
+
+<Meta title="Fondations/Typographie" />
+
+# Typographie
+
+Pile `-apple-system, SF Pro Text / SF Pro Display`, Inter en repli. Les titres utilisent SF Pro Display avec un interlettrage resserré (`--tracking-display`), le texte courant SF Pro Text à `-0.01em`. Les valeurs chiffrées passent en chiffres à chasse fixe (`font-variant-numeric: tabular-nums`).
+
+| Token | Taille | Graisse | Usage |
+| --- | --- | --- | --- |
+| `--text-large-title` | 34 | 600 | Valeur vedette |
+| `--text-title-1` | 28 | 600 | Titre d'écran |
+| `--text-title-2` | 22 | 600 | Titre de fiche |
+| `--text-title-3` | 19 | 600 | Titre de carte |
+| `--text-headline` | 15 | 600 | Intitulé fort |
+| `--text-body` | 15 | 400 | Texte courant |
+| `--text-callout` | 14 | 400 | Lignes de liste, boutons |
+| `--text-subheadline` | 13 | 400 | Contrôles compacts |
+| `--text-footnote` | 12 | 400 | Aides, métadonnées |
+| `--text-caption` | 11 | 500 | En-têtes de section |
+
+<Typeset
+  fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro Display', Inter, sans-serif"
+  fontSizes={[34, 28, 22, 19, 15, 14, 13, 12, 11]}
+  fontWeight={600}
+  sampleText="Quatre cylindres, seize soupapes"
+/>

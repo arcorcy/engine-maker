@@ -1,0 +1,34 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.value {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-label);
+  white-space: nowrap;
+}
+
+.lg .value { font: 600 34px/1.05 var(--font-display); letter-spacing: -0.03em; }
+.md .value { font: 600 22px/1.1 var(--font-display); letter-spacing: -0.02em; }
+.sm .value { font: 600 15px/1.25 var(--font-text); }
+
+.unit {
+  font: var(--text-subheadline);
+  font-weight: 500;
+  color: var(--color-label-secondary);
+  letter-spacing: 0;
+}
+
+.label {
+  margin-top: 3px;
+  font: var(--text-footnote);
+  color: var(--color-label-tertiary);
+}
+
+.accent .value { color: var(--color-accent); }
+.danger .value { color: var(--color-danger); }

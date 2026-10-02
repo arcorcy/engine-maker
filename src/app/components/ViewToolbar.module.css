@@ -1,0 +1,77 @@
+.dock {
+  position: absolute;
+  z-index: 15;
+  bottom: var(--panel-gap);
+  left: var(--panel-gap);
+  right: var(--panel-gap);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  transition:
+    left var(--duration-slow) var(--ease-out),
+    right var(--duration-slow) var(--ease-out);
+}
+
+@media (min-width: 1024px) {
+  .dock[data-left='true'] {
+    left: calc(var(--panel-library) + var(--panel-gap) * 2);
+  }
+  .dock[data-right='true'] {
+    right: calc(var(--panel-inspector) + var(--panel-gap) * 2);
+  }
+}
+
+.toolbar {
+  pointer-events: auto;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 8px;
+  color: var(--color-label-secondary);
+}
+
+.value {
+  min-width: 7.5ch;
+  font: var(--text-footnote);
+  font-weight: 500;
+  color: var(--color-label);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.slider {
+  width: 112px;
+}
+
+@media (max-width: 1279px) {
+  .slider {
+    width: 84px;
+  }
+  .optional {
+    display: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .dock {
+    bottom: 8px;
+    left: 8px;
+    right: 8px;
+  }
+  .slider {
+    width: 64px;
+  }
+  .value,
+  .control > svg {
+    display: none;
+  }
+  .control {
+    padding: 0 4px;
+  }
+}

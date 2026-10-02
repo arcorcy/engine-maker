@@ -1,0 +1,36 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { space, radius } from '../tokens';
+
+<Meta title="Fondations/Espacements et rayons" />
+
+# Espacements et rayons
+
+Grille de 4 px. Les panneaux flottants sont décollés des bords de `--space-4` et arrondis à `--radius-xl`. Les contrôles internes utilisent des rayons plus petits pour rester concentriques : un rayon intérieur vaut le rayon extérieur moins la marge.
+
+## Espacements
+
+<div style={{ display: 'grid', gap: 10 }}>
+  {Object.entries(space).map(([k, v]) => (
+    <div key={k} style={{ display: 'grid', gridTemplateColumns: '120px 60px 1fr', alignItems: 'center', gap: 12, font: 'var(--text-footnote)' }}>
+      <code>--space-{k}</code>
+      <span style={{ color: 'var(--color-label-secondary)' }}>{v}px</span>
+      <span style={{ width: v, height: 12, borderRadius: 3, background: 'var(--color-accent)' }} />
+    </div>
+  ))}
+</div>
+
+## Rayons
+
+<div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+  {Object.entries(radius).map(([k, v]) => (
+    <div key={k} style={{ display: 'grid', justifyItems: 'center', gap: 8, font: 'var(--text-footnote)' }}>
+      <span style={{ width: 88, height: 64, borderRadius: v, background: 'var(--color-fill-strong)' }} />
+      <code>--radius-{k}</code>
+      <span style={{ color: 'var(--color-label-secondary)' }}>{v === 999 ? 'pilule' : `${v}px`}</span>
+    </div>
+  ))}
+</div>
+
+## Hauteurs de contrôle
+
+`--control-sm` 28 px, `--control-md` 34 px, `--control-lg` 44 px. La grande taille respecte la cible tactile minimale de 44 px.

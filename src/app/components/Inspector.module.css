@@ -1,0 +1,121 @@
+.headRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.headRow > :first-child {
+  flex: 1;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-5) var(--space-6);
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.titleRow > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.section ul,
+.section ol {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 18px;
+  font: var(--text-callout);
+}
+
+.section li::marker {
+  color: var(--color-label-tertiary);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-top: var(--space-1);
+}
+
+.callout {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: var(--color-label);
+}
+
+.callout > svg {
+  margin-top: 1px;
+  color: var(--color-danger);
+}
+
+.legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  font: var(--text-footnote);
+  color: var(--color-label-secondary);
+}
+
+.legend span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.gestures {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  font: var(--text-footnote);
+  color: var(--color-label-secondary);
+}
+
+.gestures dt {
+  color: var(--color-label);
+  font-weight: 500;
+}
+
+.gestures dd {
+  margin: 0;
+}

@@ -1,0 +1,67 @@
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-5) var(--space-6);
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.readouts {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.gear {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.rpm {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: calc(var(--space-1) * -1);
+}
+
+.gauge {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.road {
+  display: block;
+  width: 100%;
+  height: 76px;
+  border-radius: var(--radius-md);
+  background: var(--color-fill);
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 0.5px solid var(--color-separator);
+}

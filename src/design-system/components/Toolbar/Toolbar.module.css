@@ -1,0 +1,26 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 6px;
+  border-radius: var(--radius-full);
+  border: 0.5px solid var(--color-material-border);
+  background: var(--color-material);
+  -webkit-backdrop-filter: blur(var(--blur-material)) saturate(var(--saturate-material));
+  backdrop-filter: blur(var(--blur-material)) saturate(var(--saturate-material));
+  box-shadow: var(--shadow-lg);
+}
+
+.group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.sep {
+  flex: none;
+  width: 1px;
+  height: 20px;
+  margin: 0 var(--space-1);
+  background: var(--color-separator);
+}

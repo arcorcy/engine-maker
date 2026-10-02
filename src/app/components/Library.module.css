@@ -1,0 +1,42 @@
+.list {
+  padding: var(--space-2) var(--space-2) var(--space-4);
+}
+
+.group + .group {
+  margin-top: var(--space-3);
+}
+
+.empty {
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  font: var(--text-callout);
+  color: var(--color-label-secondary);
+}
+
+.sev {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-xs);
+  background: var(--color-fill);
+  color: var(--color-label-secondary);
+}
+
+.sev[data-s='2'] {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
+.sev[data-s='3'],
+.sev[data-s='4'] {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+/* sur une ligne sélectionnée (fond plein), la pastille passe en blanc translucide */
+[aria-current='true'] .sev {
+  background: rgba(255, 255, 255, 0.22);
+  color: inherit;
+}

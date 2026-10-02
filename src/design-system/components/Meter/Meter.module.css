@@ -1,0 +1,27 @@
+.root {
+  position: relative;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--color-fill-strong);
+  overflow: hidden;
+}
+
+.bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--color-accent);
+  transition:
+    width var(--duration-base) var(--ease-out),
+    background-color var(--duration-base) var(--ease-out);
+}
+
+.high .bar {
+  background: var(--color-danger);
+}
+
+.zone {
+  position: absolute;
+  inset: 0 0 0 auto;
+  background: var(--color-danger-soft);
+}

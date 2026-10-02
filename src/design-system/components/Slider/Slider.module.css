@@ -1,0 +1,94 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.inline {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+  font: var(--text-footnote);
+  color: var(--color-label-secondary);
+}
+
+.inline .head {
+  flex: none;
+}
+
+.value {
+  color: var(--color-label);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.input {
+  --_p: 50%;
+  --_fill: var(--color-accent);
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  min-width: 80px;
+  height: 22px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.input::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(to right, var(--_fill) var(--_p), var(--color-fill-strong) var(--_p));
+}
+.input::-moz-range-track {
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(to right, var(--_fill) var(--_p), var(--color-fill-strong) var(--_p));
+}
+
+.input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -8px;
+  border-radius: 50%;
+  border: 0;
+  background: #fff;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 3px 8px rgba(0, 0, 0, 0.18), 0 1px 1px rgba(0, 0, 0, 0.12);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.input::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 0;
+  background: #fff;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 3px 8px rgba(0, 0, 0, 0.18), 0 1px 1px rgba(0, 0, 0, 0.12);
+}
+
+.input:active::-webkit-slider-thumb {
+  transform: scale(1.12);
+}
+
+.input:focus-visible {
+  outline: none;
+}
+.input:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px var(--color-focus), 0 3px 8px rgba(0, 0, 0, 0.18);
+}
+
+.danger {
+  --_fill: var(--color-danger);
+}
+
+.neutral {
+  --_fill: var(--color-label-secondary);
+}

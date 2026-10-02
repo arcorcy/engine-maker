@@ -1,0 +1,60 @@
+.root {
+  --_s: var(--control-md);
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: var(--_s);
+  height: var(--_s);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-label-secondary);
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.root:hover:not(:disabled) {
+  background: var(--color-fill);
+  color: var(--color-label);
+}
+
+.root:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.root:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.sm { --_s: var(--control-sm); }
+.lg { --_s: var(--control-lg); }
+
+.filled {
+  background: var(--color-fill);
+  color: var(--color-label);
+}
+.filled:hover:not(:disabled) {
+  background: var(--color-fill-hover);
+}
+
+.prominent {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+.prominent:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  color: var(--color-on-accent);
+}
+
+.root[aria-pressed='true']:not(.prominent) {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.square {
+  border-radius: var(--radius-sm);
+}

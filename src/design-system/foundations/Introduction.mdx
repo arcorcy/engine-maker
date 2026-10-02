@@ -1,0 +1,41 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Fondations/Introduction" />
+
+# Design system Anatomie moteur
+
+Interface de l'outil de visualisation 3D d'un moteur quatre temps. Le parti pris est celui des interfaces Apple : la maquette occupe tout l'écran, l'interface se fait oublier et flotte au-dessus dans des panneaux de verre dépoli.
+
+## Principes
+
+**La vue d'abord.** Le moteur est le contenu. Les panneaux sont translucides, arrondis et détachés des bords pour laisser la scène respirer.
+
+**Une seule couleur d'action.** Le bleu système porte la sélection, le focus et l'action principale. Le rouge est réservé aux pannes et à la zone rouge du compte-tours. Les couleurs des systèmes mécaniques ne servent qu'à identifier les pièces.
+
+**Hiérarchie par la typographie, pas par les cadres.** Peu de bordures, des séparateurs fins, des niveaux de gris de texte (primaire, secondaire, tertiaire) et la pile SF Pro, avec Inter en repli hors de l'écosystème Apple.
+
+**Mouvement court et amorti.** Une seule courbe (`--ease-out`, celle des feuilles iOS) et trois durées. Tout est coupé si l'utilisateur demande moins d'animations.
+
+## Architecture des tokens
+
+Deux niveaux dans `src/design-system/tokens/tokens.css` :
+
+- **Primitives** `--p-*` : valeurs brutes (gris, couleurs système). Les composants ne les lisent jamais.
+- **Sémantiques** `--color-*`, `--space-*`, `--radius-*`, `--text-*`, `--ease-*`, `--duration-*` : ce que les composants consomment. Seul ce niveau change entre le thème clair et le thème sombre.
+
+Le thème suit `prefers-color-scheme` et se force avec `data-theme="light"` ou `data-theme="dark"` sur `<html>`. Le sélecteur de thème de la barre d'outils Storybook fait la même chose.
+
+## Utilisation
+
+```tsx
+import '@ds/tokens/tokens.css';
+import '@ds/tokens/base.css';
+import { Button, Surface, Text } from '@ds';
+
+<Surface material="glass" padding="lg">
+  <Text variant="title-3">Vilebrequin</Text>
+  <Button variant="primary" icon="play">Faire tourner</Button>
+</Surface>
+```
+
+Chaque composant vit dans son dossier (`Composant.tsx`, `Composant.module.css`, `Composant.stories.tsx`) et n'utilise que des tokens sémantiques.

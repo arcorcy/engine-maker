@@ -1,0 +1,84 @@
+.button {
+  --_h: var(--control-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: var(--_h);
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-full);
+  font: var(--text-callout);
+  font-weight: 500;
+  white-space: nowrap;
+  user-select: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.sm {
+  --_h: var(--control-sm);
+  padding: 0 var(--space-3);
+  font: var(--text-subheadline);
+  font-weight: 500;
+}
+
+.lg {
+  --_h: var(--control-lg);
+  padding: 0 var(--space-6);
+  font: var(--text-body);
+  font-weight: 500;
+}
+
+.full {
+  width: 100%;
+}
+
+.primary {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+.primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
+
+.secondary {
+  background: var(--color-fill);
+  color: var(--color-label);
+}
+.secondary:hover:not(:disabled) {
+  background: var(--color-fill-hover);
+}
+.secondary[aria-pressed='true'] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.plain {
+  background: transparent;
+  color: var(--color-accent);
+  padding-inline: var(--space-2);
+}
+.plain:hover:not(:disabled) {
+  background: var(--color-accent-soft);
+}
+
+.destructive {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+.destructive:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger) 18%, transparent);
+}

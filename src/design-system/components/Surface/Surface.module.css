@@ -1,0 +1,46 @@
+.root {
+  position: relative;
+  border-radius: var(--radius-xl);
+  border: 0.5px solid var(--color-material-border);
+  box-shadow: var(--shadow-lg);
+  color: var(--color-label);
+}
+
+/* Verre dépoli : le contenu derrière reste perceptible, comme les barres latérales macOS */
+.glass {
+  background: var(--color-material);
+  -webkit-backdrop-filter: blur(var(--blur-material)) saturate(var(--saturate-material));
+  backdrop-filter: blur(var(--blur-material)) saturate(var(--saturate-material));
+}
+
+.thick {
+  background: var(--color-material-thick);
+  -webkit-backdrop-filter: blur(var(--blur-material)) saturate(var(--saturate-material));
+  backdrop-filter: blur(var(--blur-material)) saturate(var(--saturate-material));
+}
+
+.solid {
+  background: var(--color-bg-elevated);
+}
+
+.inset {
+  background: var(--color-fill);
+  border: 0;
+  box-shadow: none;
+  border-radius: var(--radius-md);
+}
+
+.r-md { border-radius: var(--radius-md); }
+.r-lg { border-radius: var(--radius-lg); }
+.r-full { border-radius: var(--radius-full); }
+
+.p-sm { padding: var(--space-2); }
+.p-md { padding: var(--space-4); }
+.p-lg { padding: var(--space-6); }
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .thick {
+    background: var(--color-bg-elevated);
+  }
+}

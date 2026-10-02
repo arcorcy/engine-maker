@@ -1,0 +1,17 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Fondations/Mouvement" />
+
+# Mouvement
+
+Une seule courbe pour les entrées et les réponses aux gestes, `--ease-out` (`cubic-bezier(0.32, 0.72, 0, 1)`), qui démarre vite et se pose doucement comme les feuilles iOS. `--ease-in-out` sert aux transitions de vue complètes.
+
+| Token | Durée | Usage |
+| --- | --- | --- |
+| `--duration-fast` | 140 ms | Survol, appui, couleurs |
+| `--duration-base` | 240 ms | Curseur du SegmentedControl, jauges |
+| `--duration-slow` | 420 ms | Ouverture des panneaux |
+
+Les boutons se compriment légèrement à l'appui (`scale(0.97)`, `0.92` pour les boutons icône). Les infobulles apparaissent après 450 ms pour ne pas gêner le survol rapide.
+
+Avec `prefers-reduced-motion: reduce`, toutes les transitions CSS sont neutralisées. Dans la vue 3D, le moteur ne se met pas à tourner tout seul au chargement : il attend une action de l'utilisateur.

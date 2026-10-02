@@ -1,0 +1,46 @@
+import { Meta, ColorPalette, ColorItem } from '@storybook/addon-docs/blocks';
+
+<Meta title="Fondations/Couleurs" />
+
+# Couleurs
+
+Les valeurs sémantiques se lisent avec `var(--color-…)`. Basculez le thème dans la barre d'outils pour voir leur version sombre.
+
+## Texte et fonds
+
+<ColorPalette>
+  <ColorItem title="Fond" subtitle="--color-bg, --color-bg-elevated" colors={{ bg: 'var(--color-bg)', elevated: 'var(--color-bg-elevated)' }} />
+  <ColorItem title="Matière" subtitle="--color-material, --color-material-thick" colors={{ material: 'var(--color-material)', thick: 'var(--color-material-thick)' }} />
+  <ColorItem title="Libellés" subtitle="--color-label, -secondary, -tertiary" colors={{ label: 'var(--color-label)', secondary: 'var(--color-label-secondary)', tertiary: 'var(--color-label-tertiary)' }} />
+  <ColorItem title="Remplissages" subtitle="--color-fill, -hover, -strong, separator" colors={{ fill: 'var(--color-fill)', hover: 'var(--color-fill-hover)', strong: 'var(--color-fill-strong)', separator: 'var(--color-separator)' }} />
+</ColorPalette>
+
+## Intentions
+
+<ColorPalette>
+  <ColorItem title="Accent" subtitle="Sélection, focus, action principale" colors={{ accent: 'var(--color-accent)', hover: 'var(--color-accent-hover)', soft: 'var(--color-accent-soft)' }} />
+  <ColorItem title="Danger" subtitle="Pannes, zone rouge" colors={{ danger: 'var(--color-danger)', soft: 'var(--color-danger-soft)' }} />
+  <ColorItem title="Avertissement" subtitle="Gravité moyenne" colors={{ warning: 'var(--color-warning)', soft: 'var(--color-warning-soft)' }} />
+  <ColorItem title="Succès" colors={{ success: 'var(--color-success)' }} />
+</ColorPalette>
+
+## Systèmes mécaniques
+
+Identiques dans les deux thèmes, partagées avec le rendu 3D (mode « Systèmes ») via `systemColors` dans `tokens/index.ts`.
+
+<ColorPalette>
+  <ColorItem title="Structure" subtitle="--p-sys-gray" colors={{ gray: '#8e8e93' }} />
+  <ColorItem title="Équipage mobile" subtitle="--p-sys-orange" colors={{ orange: '#ff9500' }} />
+  <ColorItem title="Distribution" subtitle="--p-sys-yellow" colors={{ yellow: '#ffcc00' }} />
+  <ColorItem title="Allumage et injection" subtitle="--p-sys-purple" colors={{ purple: '#af52de' }} />
+  <ColorItem title="Admission et échappement" subtitle="--p-sys-blue" colors={{ blue: '#007aff' }} />
+  <ColorItem title="Huile et refroidissement" subtitle="--p-sys-teal" colors={{ teal: '#30b0c7' }} />
+  <ColorItem title="Accessoires" subtitle="--p-sys-pink" colors={{ pink: '#ff2d55' }} />
+</ColorPalette>
+
+## Gris primitifs
+
+<ColorPalette>
+  <ColorItem title="Clairs" colors={{ 25: '#fbfbfd', 50: '#f5f5f7', 100: '#e8e8ed', 200: '#d2d2d7', 300: '#c7c7cc', 400: '#aeaeb2' }} />
+  <ColorItem title="Foncés" colors={{ 500: '#86868b', 600: '#6e6e73', 700: '#424245', 800: '#2c2c2e', 900: '#1d1d1f' }} />
+</ColorPalette>
