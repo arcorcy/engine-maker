@@ -13,7 +13,17 @@
 }
 
 .head > :last-child {
-  width: 168px;
+  width: 196px;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  font: var(--text-footnote);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 
 .block {

@@ -1,16 +1,23 @@
-import type { ReactNode } from 'react';
-import { Badge, Button, Icon, IconButton, SegmentedControl, Surface, Text } from '@ds';
+import { useMemo, type ReactNode } from 'react';
+import { Badge, Button, ChoiceList, Icon, IconButton, Notice, SegmentedControl, Surface, Text, type Choice } from '@ds';
 import { FAIL, SEVERITY_LABEL, type Failure } from '../../engine/data/failures';
-import { PART, type Part } from '../../engine/data/parts';
+import { PART, quantity, type Part } from '../../engine/data/parts';
+import { useArchitecture } from '../state/limits';
 import { SYSTEM, SYSTEMS } from '../../engine/data/systems';
+import { getVariant, optionsFor, variantsFor, type SlotId } from '../../engine/spec';
+import { useGarage } from '../garage/garageStore';
+import { plural, summarize } from '../garage/summary';
+import { navigate } from '../router';
 import { useEngine, type InspectorTab } from '../state/store';
 import { Cycle } from './Cycle';
 import { Drive } from './Drive';
+import { EnginePanel } from './engine/EnginePanel';
 import p from './Panel.module.css';
 import s from './Inspector.module.css';
 
 const TABS = [
-  { value: 'detail', label: 'Fiche' },
+  { value: 'detail', label: 'Pièce' },
+  { value: 'engine', label: 'Moteur' },
   { value: 'cycle', label: 'Cycle' },
   { value: 'drive', label: 'Conduite' },
 ] as const satisfies readonly { value: InspectorTab; label: string }[];
@@ -19,7 +26,6 @@ export function Inspector() {
   const open = useEngine((st) => st.panels.inspector);
   const tab = useEngine((st) => st.inspectorTab);
   const setTab = useEngine((st) => st.setInspectorTab);
-  const togglePanel = useEngine((st) => st.togglePanel);
   const sel = useEngine((st) => st.sel);
   const fail = useEngine((st) => st.fail);
 
@@ -28,11 +34,10 @@ export function Inspector() {
       <div className={p.head}>
         <div className={s.headRow}>
           <SegmentedControl label="Vue de l'inspecteur" options={TABS} value={tab} onChange={setTab} />
-          <IconButton icon="close" label="Fermer l'inspecteur" size="sm" variant="filled" tooltip="left" onClick={() => togglePanel('inspector', false)} />
         </div>
       </div>
       <div className={p.body} key={tab + (fail ?? sel ?? '')}>
-        {tab === 'drive' ? <Drive /> : tab === 'cycle' ? <Cycle /> : fail ? <FailDetail f={FAIL[fail]} /> : sel ? <PartDetail part={PART[sel]} /> : <Welcome />}
+        {tab === 'drive' ? <Drive /> : tab === 'cycle' ? <Cycle /> : tab === 'engine' ? <EnginePanel /> : fail ? <FailDetail f={FAIL[fail]} /> : sel ? <PartDetail part={PART[sel]} /> : <Welcome />}
       </div>
     </Surface>
   );
@@ -51,16 +56,19 @@ function Section({ label, children }: { label: string; children: ReactNode }) {
 
 function Welcome() {
   const { demoExplode, demoCycle, selectFail } = useEngine.getState();
+  const readOnly = useEngine((st) => st.readOnly);
+  const order = useEngine((st) => st.spec.params.firingOrder.join(', '));
   return (
     <div className={s.content}>
       <div className={s.intro}>
-        <Text variant="title-2">Découvrir le moteur</Text>
+        <Text variant="title-2">{readOnly ? 'Découvrir le moteur' : 'Personnaliser ce moteur'}</Text>
         <Text variant="callout" tone="secondary">
-          Un moteur à quatre temps répète quatre étapes dans chaque cylindre : admission, compression, combustion,
-          échappement. Les cylindres sont décalés pour que l'un d'eux soit toujours en phase motrice. Ordre d'allumage
-          1, 3, 4, 2.
+          {readOnly
+            ? `Un moteur à quatre temps répète quatre étapes dans chaque cylindre : admission, compression, combustion, échappement. Les cylindres sont décalés pour que l'un d'eux soit toujours en phase motrice. Ordre d'allumage ${order}.`
+            : "Cliquez une pièce dans la vue ou dans la liste : sa fiche propose les pièces de remplacement compatibles, et la maquette se reconstruit avec elles. L'onglet Moteur montre la fiche technique et ce qui pose problème."}
         </Text>
       </div>
+      {readOnly && <StartFromReference />}
       <div className={s.actions}>
         <Button variant="primary" icon="play" onClick={demoCycle}>Suivre le cycle</Button>
         <Button icon="explode" onClick={demoExplode}>Éclater</Button>
@@ -89,16 +97,117 @@ function Welcome() {
   );
 }
 
+/** Sur le moteur de référence : rappel qu'il faut le copier pour changer ses pièces. */
+function StartFromReference() {
+  const createEngine = useGarage((st) => st.createEngine);
+  return (
+    <Notice
+      tone="info"
+      title="Moteur de référence, en lecture seule"
+      action={
+        <Button size="sm" variant="primary" icon="plus" onClick={async () => navigate({ name: 'engine', id: (await createEngine('L4 1.6')).id })}>
+          Créer
+        </Button>
+      }
+    >
+      <p>Créez votre moteur à partir de celui-ci pour remplacer ses pièces.</p>
+    </Notice>
+  );
+}
+
+/** Pièce montée et pièces de remplacement, avec leurs conséquences. */
+function Replace({ slot }: { slot: SlotId }) {
+  const spec = useEngine((st) => st.spec);
+  const readOnly = useEngine((st) => st.readOnly);
+  const { swapPart } = useEngine.getState();
+  const mounted = getVariant(spec.parts[slot]);
+  const several = variantsFor(slot).length > 1;
+
+  const choices: Choice<string>[] = useMemo(
+    () =>
+      several && !readOnly
+        ? optionsFor(spec, slot).map((o) => ({
+            value: o.variant.id,
+            title: o.variant.name,
+            description: o.variant.note,
+            meta: o.adjustments.length ? <Badge tone="accent">+{plural(o.adjustments.length, 'pièce', 'pièces')}</Badge> : undefined,
+            extra: o.adjustments.length ? `Remplace aussi : ${o.adjustments.map((a) => PART[a.slot].name.toLowerCase()).join(', ')}.` : undefined,
+            disabledReason: o.blocked,
+          }))
+        : [],
+    [spec, slot, several, readOnly],
+  );
+
+  return (
+    <>
+      <Section label="Pièce montée">
+        <Text variant="headline">{mounted?.name ?? 'Pièce inconnue'}</Text>
+        {mounted && <Text variant="callout" tone="secondary">{mounted.note}</Text>}
+      </Section>
+      {several && readOnly && <StartFromReference />}
+      {several && !readOnly && (
+        <Section label="Remplacer par">
+          <ChoiceList label={`Remplacer ${PART[slot].name}`} choices={choices} value={spec.parts[slot]} onChange={(v) => swapPart(slot, v)} />
+        </Section>
+      )}
+      {!several && (
+        <Text variant="footnote" tone="tertiary">Une seule version de cette pièce pour l'instant.</Text>
+      )}
+    </>
+  );
+}
+
+/** Conséquences du dernier remplacement fait depuis cette fiche, avec de quoi l'annuler. */
+function ChangeNotice({ slot }: { slot: SlotId }) {
+  const last = useEngine((st) => st.lastChange);
+  const { undo, dismissChange } = useEngine.getState();
+  if (last?.slot !== slot) return null;
+  return (
+    <Notice
+      tone="info"
+      live
+      title={last.adjustments.length > 1 ? `${last.adjustments.length} pièces remplacées pour rester compatibles` : '1 pièce remplacée pour rester compatible'}
+      action={<Button variant="plain" size="sm" onClick={undo}>Annuler</Button>}
+    >
+      <ul>
+        {last.adjustments.map((a) => (
+          <li key={a.slot}>{getVariant(a.to)?.name}, pour un {a.reason}</li>
+        ))}
+      </ul>
+      <Button variant="plain" size="sm" onClick={dismissChange} style={{ alignSelf: 'flex-start', marginLeft: -8 }}>Compris</Button>
+    </Notice>
+  );
+}
+
+/** Problèmes de cohérence qui concernent cette pièce. */
+function PartIssues({ slot }: { slot: SlotId }) {
+  const spec = useEngine((st) => st.spec);
+  const readOnly = useEngine((st) => st.readOnly);
+  const issues = useMemo(() => summarize(spec).validation.issues.filter((i) => (i.targets as string[]).includes(slot)), [spec, slot]);
+  if (readOnly || !issues.length) return null;
+  return (
+    <>
+      {issues.map((i, k) => (
+        <Notice key={`${i.code}-${k}`} tone={i.severity === 'error' ? 'danger' : 'warning'} title={i.message}>
+          {i.hint && <p>{i.hint}</p>}
+        </Notice>
+      ))}
+    </>
+  );
+}
+
 function PartDetail({ part }: { part: Part }) {
   const iso = useEngine((st) => st.iso);
   const { clear, selectFail, isolateSelectedPart, isolateSelectedSystem, hide } = useEngine.getState();
   const sys = SYSTEM[part.sys];
+  const slot = part.id as SlotId;
+  const arch = useArchitecture();
   return (
     <div className={s.content}>
       <div className={s.intro}>
         <div className={s.meta}>
           <Badge dot={sys.color}>{sys.name}</Badge>
-          <Badge>Quantité {part.qty}</Badge>
+          <Badge>Quantité {quantity(part, arch.cylinders, arch.banks)}</Badge>
         </div>
         <div className={s.titleRow}>
           <Text variant="title-2">{part.name}</Text>
@@ -106,6 +215,9 @@ function PartDetail({ part }: { part: Part }) {
         </div>
         <Text variant="callout">{part.role}</Text>
       </div>
+      <ChangeNotice slot={slot} />
+      <PartIssues slot={slot} />
+      <Replace slot={slot} />
       <Section label="Fonctionnement">
         <Text variant="callout" tone="secondary">{part.how}</Text>
       </Section>

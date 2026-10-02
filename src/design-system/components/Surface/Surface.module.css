@@ -21,6 +21,7 @@
 
 .solid {
   background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-sm);
 }
 
 .inset {

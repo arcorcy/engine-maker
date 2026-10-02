@@ -2,11 +2,12 @@ import { create } from 'zustand';
 import { FAIL } from '../../engine/data/failures';
 import { PART, PARTS } from '../../engine/data/parts';
 import type { SystemId } from '../../engine/data/systems';
-import { CAR, clampRpm, rpmFor, type Preset } from '../../engine/data/vehicle';
+import { CAR, REFERENCE_SPEC, rpmFor, type Preset } from '../../engine/data/vehicle';
+import { applyChange, getVariant, type Adjustment, type EngineParams, type EngineSpec, type SlotId } from '../../engine/spec';
 
 export type Tab = 'parts' | 'fails';
 export type ColorMode = 'materials' | 'systems';
-export type InspectorTab = 'detail' | 'cycle' | 'drive';
+export type InspectorTab = 'detail' | 'engine' | 'cycle' | 'drive';
 export type Side = 'intake' | 'exhaust';
 export type Isolation = { type: 'part'; id: string } | { type: 'sys'; id: SystemId } | null;
 
@@ -38,6 +39,17 @@ export interface EngineState extends ViewFlags {
   inspectorTab: InspectorTab;
   /** Côté du moteur face à la caméra ; n change à chaque demande de rotation. */
   side: { value: Side; n: number };
+
+  /* ----- Moteur affiché ----- */
+  /** Identifiant dans le garage, ou null pour le moteur de référence. */
+  engineId: string | null;
+  spec: EngineSpec;
+  /** Le moteur de référence se consulte sans se modifier. */
+  readOnly: boolean;
+  past: EngineSpec[];
+  future: EngineSpec[];
+  /** Dernier remplacement qui a entraîné d'autres changements, pour l'expliquer et l'annuler. */
+  lastChange: { slot: SlotId; variant: string; adjustments: Adjustment[] } | null;
 }
 
 interface Actions {
@@ -64,6 +76,14 @@ interface Actions {
   togglePanel: (p: 'library' | 'inspector', open?: boolean) => void;
   setInspectorTab: (t: InspectorTab) => void;
   setSide: (side: Side) => void;
+  loadEngine: (id: string | null, spec: EngineSpec, readOnly: boolean) => void;
+  swapPart: (slot: SlotId, variant: string) => void;
+  setEngineParam: <K extends keyof EngineParams>(key: K, value: EngineParams[K]) => void;
+  renameEngine: (name: string) => void;
+  resetEngine: (spec: EngineSpec) => void;
+  undo: () => void;
+  redo: () => void;
+  dismissChange: () => void;
   demoExplode: () => void;
   demoCycle: () => void;
 }
@@ -78,6 +98,17 @@ export function isPartVisible(s: Pick<EngineState, 'hidden' | 'iso'>, id: string
 
 export const visibleIds = (s: Pick<EngineState, 'hidden' | 'iso'>) => ALL_IDS.filter((id) => isPartVisible(s, id));
 const systemIds = (sys: SystemId) => PARTS.filter((p) => p.sys === sys).map((p) => p.id);
+
+/** Régime borné entre le ralenti et le régime maxi du moteur affiché. */
+const clampFor = (spec: EngineSpec, v: number) => Math.min(spec.params.redline, Math.max(CAR.idle, Math.round(v)));
+
+/** Nouvelle version de la spec dans l'historique ; le régime reste sous le nouveau régime maxi. */
+function pushSpec(s: EngineState, spec: EngineSpec): Partial<EngineState> {
+  return { spec, past: [...s.past.slice(-49), s.spec], future: [], rpm: clampFor(spec, s.rpm) };
+}
+
+/** Nom de la variante montée sur un emplacement. */
+export const mountedName = (spec: EngineSpec, slot: SlotId) => getVariant(spec.parts[slot])?.name ?? 'Pièce inconnue';
 
 export const useEngine = create<EngineState & Actions>()((set, get) => {
   const fit = (ids: string[], minRad = 4.5) => ({ fit: { ids, minRad, n: get().fit.n + 1 } });
@@ -106,6 +137,12 @@ export const useEngine = create<EngineState & Actions>()((set, get) => {
     panels: { library: true, inspector: true },
     inspectorTab: 'detail',
     side: { value: 'intake', n: 0 },
+    engineId: null,
+    spec: REFERENCE_SPEC,
+    readOnly: true,
+    past: [],
+    future: [],
+    lastChange: null,
 
     setTab: (tab) => set({ tab, query: '' }),
     setQuery: (query) => set({ query }),
@@ -178,9 +215,9 @@ export const useEngine = create<EngineState & Actions>()((set, get) => {
 
     setExplode: (explode) => set({ explode }),
     setColorMode: (colorMode) => set({ colorMode }),
-    setRpm: (v) => set({ rpm: clampRpm(v) }),
+    setRpm: (v) => set((s) => ({ rpm: clampFor(s.spec, v) })),
     setGear: (gear) => set({ gear }),
-    applyPreset: (p) => set({ gear: p.gear, rpm: Math.min(CAR.redline, Math.max(CAR.idle, Math.round(rpmFor(p)))) }),
+    applyPreset: (p) => set((s) => ({ gear: p.gear, rpm: clampFor(s.spec, rpmFor(p)) })),
     setSlow: (slow) => set({ slow }),
 
     fitView: () =>
@@ -197,6 +234,52 @@ export const useEngine = create<EngineState & Actions>()((set, get) => {
       }),
     setSide: (value) => set((s) => ({ side: { value, n: s.side.n + 1 }, fit: { ...s.fit, n: s.fit.n + 1 } })),
     setInspectorTab: (inspectorTab) => set((s) => ({ inspectorTab, panels: { ...s.panels, inspector: true } })),
+
+    loadEngine: (engineId, spec, readOnly) =>
+      set((s) => ({
+        engineId,
+        spec,
+        readOnly,
+        past: [],
+        future: [],
+        lastChange: null,
+        sel: null,
+        fail: null,
+        iso: null,
+        hidden: [],
+        pre: null,
+        rpm: clampFor(spec, s.rpm),
+        fit: { ids: ALL_IDS, minRad: 5, n: s.fit.n + 1 },
+      })),
+
+    swapPart: (slot, variant) =>
+      set((s) => {
+        if (s.readOnly || s.spec.parts[slot] === variant) return {};
+        const r = applyChange(s.spec, { type: 'part', slot, variant });
+        return {
+          ...pushSpec(s, r.spec),
+          lastChange: r.adjustments.length ? { slot, variant, adjustments: r.adjustments } : null,
+        };
+      }),
+
+    setEngineParam: (key, value) =>
+      set((s) => (s.readOnly ? {} : { ...pushSpec(s, applyChange(s.spec, { type: 'param', key, value }).spec), lastChange: null })),
+
+    /* le nom n'entre pas dans l'historique : une saisie ne doit pas produire une annulation par lettre */
+    renameEngine: (name) => set((s) => (s.readOnly ? {} : { spec: { ...s.spec, name } })),
+
+    resetEngine: (spec) => set((s) => (s.readOnly ? {} : { ...pushSpec(s, { ...spec, name: s.spec.name }), lastChange: null })),
+
+    undo: () =>
+      set((s) =>
+        s.past.length
+          ? { spec: s.past[s.past.length - 1], past: s.past.slice(0, -1), future: [s.spec, ...s.future], lastChange: null }
+          : {},
+      ),
+    redo: () =>
+      set((s) => (s.future.length ? { spec: s.future[0], past: [...s.past, s.spec], future: s.future.slice(1), lastChange: null } : {})),
+
+    dismissChange: () => set({ lastChange: null }),
 
     demoExplode: () => set((s) => ({ explode: 1, ...fit(visibleIds(s), 5) })),
     demoCycle: () =>

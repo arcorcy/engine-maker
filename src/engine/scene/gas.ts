@@ -9,13 +9,12 @@
  */
 import * as THREE from 'three';
 import { GAS_COLORS } from '../data/vehicle';
-import { cycleAngle, EXHAUST_PEAK, HEADBOT, INTAKE_PEAK, LIFT, XS, liftAt, type Anim, type ExhaustPath } from './model';
+import { cycleAngle, liftOf, type EngineGeometry } from './geometry';
+import type { Anim, ExhaustPath } from './model';
 
 const M = 190; // particules max par cylindre
 const N0 = 130;
 const NMAX = 130;
-const R = 0.4;
-const HB = 0.718;
 const PMAX = 70;
 const XM = 520; // particules max dans la ligne d'échappement
 /** Distance parcourue dans la ligne par degré de vilebrequin, hors effet de bouffée (dm/°). */
@@ -36,7 +35,13 @@ const mix = (a: number[], b: number[], t: number, out: number[]) => {
 };
 
 /** Matériau des particules : disque doux, taille en perspective, coupe optionnelle. */
-export function particleMaterial(uniforms: { uPx: { value: number }; uCut: { value: number } }, blending = THREE.NormalBlending) {
+type Uniforms = { uPx: { value: number }; uCut: { value: number }; uN: { value: THREE.Vector3 } };
+
+/**
+ * Matériau des particules : disque doux, taille en perspective. Avec la coupe, les particules du côté retiré
+ * sont écartées : celles dont la position, dans le repère du nuage, est du côté négatif du plan de normale uN.
+ */
+export function particleMaterial(uniforms: Uniforms, blending: THREE.Blending = THREE.NormalBlending) {
   return new THREE.ShaderMaterial({
     uniforms,
     transparent: true,
@@ -45,10 +50,10 @@ export function particleMaterial(uniforms: { uPx: { value: number }; uCut: { val
     vertexShader: /* glsl */ `
       #include <common>
       #include <logdepthbuf_pars_vertex>
-      uniform float uPx; attribute vec3 aColor; attribute float aSize; attribute float aAlpha;
-      varying vec3 vC; varying float vZ; varying float vA;
+      uniform float uPx; uniform vec3 uN; attribute vec3 aColor; attribute float aSize; attribute float aAlpha;
+      varying vec3 vC; varying float vD; varying float vA;
       void main(){
-        vC = aColor; vZ = position.z; vA = aAlpha;
+        vC = aColor; vD = dot(uN, position); vA = aAlpha;
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
         gl_Position = projectionMatrix * mv;
         gl_PointSize = max(aSize * uPx / max(-mv.z, 0.01), 0.0);
@@ -56,10 +61,10 @@ export function particleMaterial(uniforms: { uPx: { value: number }; uCut: { val
       }`,
     fragmentShader: /* glsl */ `
       #include <logdepthbuf_pars_fragment>
-      uniform float uCut; varying vec3 vC; varying float vZ; varying float vA;
+      uniform float uCut; varying vec3 vC; varying float vD; varying float vA;
       void main(){
         #include <logdepthbuf_fragment>
-        if (uCut > 0.5 && vZ > 0.0) discard;
+        if (uCut > 0.5 && vD < 0.0) discard;
         vec2 d = gl_PointCoord - 0.5; float r = length(d);
         if (r > 0.5) discard;
         float a = smoothstep(0.5, 0.18, r);
@@ -81,29 +86,36 @@ function pointCloud(n: number, mat: THREE.Material) {
 }
 
 export class GasSim {
-  readonly uniforms = { uPx: { value: 600 }, uCut: { value: 1 } };
-  readonly points: THREE.Points;
+  /** Coupe active : partagée par les nuages de chaque banc. */
+  private cut = { value: 1 };
+  /** Un nuage de particules par banc, placé dans le repère du banc. */
+  readonly bankPoints: THREE.Points[];
   readonly exhaustPoints: THREE.Points;
   /** Pression lissée par cylindre, en bars. */
-  readonly p = [1, 1, 1, 1];
-  /** Pression enregistrée sur le cycle de chaque cylindre, par case de 4° (4 × 180 valeurs). */
-  readonly trace = new Float32Array(4 * TRACE_BINS).fill(1);
+  readonly p: number[];
+  /** Pression enregistrée sur le cycle de chaque cylindre, par case de 4° (n × 180 valeurs). */
+  readonly trace: Float32Array;
   /** Chaleur apportée par les gaz à chaque tubulure, de 0 à 1 environ. */
-  readonly heat = [0, 0, 0, 0];
+  readonly heat: number[];
 
-  private T = [1, 1, 1, 1];
-  private n = [0, 0, 0, 0];
-  private hPrev = [0, 0, 0, 0];
-  private cPrev = [0, 0, 0, 0];
-  private crownPrev = [0, 0, 0, 0];
-  private spawn = [0, 0, 0, 0];
-  private vel = new Float32Array(4 * M * 3);
-  private jit = new Float32Array(4 * M);
-  private alive = new Uint8Array(4 * M);
+  private T: number[];
+  private n: number[];
+  private hPrev: number[];
+  private cPrev: number[];
+  private crownPrev: number[];
+  private spawn: number[];
+  /* état de la simulation, indexé par cylindre × M + particule, dans le repère du banc */
+  private simPos: Float32Array;
+  private simCol: Float32Array;
+  private simSize: Float32Array;
+  private vel: Float32Array;
+  private jit: Float32Array;
+  private alive: Uint8Array;
   /** 0 : mélange frais, 1 : gaz brûlé. */
-  private burnt = new Uint8Array(4 * M);
+  private burnt: Uint8Array;
   /** Éclat de flamme, 1 à l'étincelle puis décroissant pendant la détente. */
-  private flame = new Float32Array(4 * M);
+  private flame: Float32Array;
+  private cyls: number;
 
   /* ligne d'échappement */
   private eAlive = new Uint8Array(XM);
@@ -115,32 +127,109 @@ export class GasSim {
   private eHot = new Float32Array(XM);
   private eFree = 0;
   private tmp = [0, 0, 0];
+  /** Rayon d'alésage, plafond de chambre. */
+  private R: number;
+  private top: number;
+  /**
+   * Volume mort exprimé en hauteur de cylindre équivalente : avec lui, le rapport entre volume au PMB et au PMH
+   * vaut le rapport volumétrique calculé par la spec. HB est la hauteur équivalente au PMB.
+   */
+  private dead: number;
+  private HB: number;
 
   constructor(
     private anim: Anim,
     private paths: ExhaustPath[],
+    private geo: EngineGeometry,
+    /** Échelle des points, partagée avec la fumée et mise à jour par la scène au redimensionnement. */
+    uPx: { value: number },
   ) {
+    const N = geo.n;
+    this.cyls = N;
+    const fill = (v: number) => new Array(N).fill(v);
+    this.p = fill(1);
+    this.heat = fill(0);
+    this.T = fill(1);
+    this.n = fill(0);
+    this.hPrev = fill(0);
+    this.cPrev = fill(0);
+    this.crownPrev = fill(0);
+    this.spawn = fill(0);
+    this.trace = new Float32Array(N * TRACE_BINS).fill(1);
+    this.simPos = new Float32Array(N * M * 3);
+    this.simCol = new Float32Array(N * M * 3);
+    this.simSize = new Float32Array(N * M);
+    this.vel = new Float32Array(N * M * 3);
+    this.jit = new Float32Array(N * M);
+    this.alive = new Uint8Array(N * M);
+    this.burnt = new Uint8Array(N * M);
+    this.flame = new Float32Array(N * M);
+    this.R = geo.boreR;
+    this.top = geo.headBot - 0.012;
+    const hTDC = Math.max(0.005, this.top - (geo.CR + geo.CL + geo.CH));
+    const hBDC = this.top - (geo.CL - geo.CR + geo.CH);
+    const cr = Math.max(2, geo.compressionRatio);
+    this.dead = Math.max(0, (hBDC - cr * hTDC) / (cr - 1));
+    this.HB = hBDC + this.dead;
     for (let k = 0; k < this.jit.length; k++) this.jit[k] = 0.8 + Math.random() * 0.4;
-    this.points = pointCloud(4 * M, particleMaterial(this.uniforms));
-    this.exhaustPoints = pointCloud(XM, particleMaterial(this.uniforms));
-    (this.points.geometry.attributes.aAlpha.array as Float32Array).fill(0.92);
+    this.bankPoints = geo.banks.map((bk) => {
+      /* dans le repère du banc, le côté retiré par la coupe est z > 0 (z < 0 si le banc est en miroir) */
+      const n = new THREE.Vector3(0, 0, bk.mirror ? 1 : -1);
+      const pts = pointCloud(bk.cyls.length * M, particleMaterial({ uPx, uCut: this.cut, uN: { value: n } }));
+      (pts.geometry.attributes.aAlpha.array as Float32Array).fill(0.92);
+      return pts;
+    });
+    /* gaz de la ligne d'échappement, dans le repère du moteur : même plan que le bas moteur (z > 0 retiré) */
+    this.exhaustPoints = pointCloud(XM, particleMaterial({ uPx, uCut: this.cut, uN: { value: new THREE.Vector3(0, 0, -1) } }));
   }
 
   private get pos() {
-    return this.points.geometry.attributes.position.array as Float32Array;
+    return this.simPos;
+  }
+
+  /** Recopie l'état de chaque cylindre dans le nuage de son banc. */
+  private publish() {
+    this.geo.banks.forEach((bk, b) => {
+      const a = this.bankPoints[b].geometry.attributes;
+      const pos = a.position.array as Float32Array;
+      const col = a.aColor.array as Float32Array;
+      const size = a.aSize.array as Float32Array;
+      bk.cyls.forEach((c, j) => {
+        pos.set(this.simPos.subarray(c * M * 3, (c + 1) * M * 3), j * M * 3);
+        col.set(this.simCol.subarray(c * M * 3, (c + 1) * M * 3), j * M * 3);
+        size.set(this.simSize.subarray(c * M, (c + 1) * M), j * M);
+      });
+      a.position.needsUpdate = true;
+      a.aColor.needsUpdate = true;
+      a.aSize.needsUpdate = true;
+    });
   }
 
   private crown(i: number) {
-    return this.anim.pist[i].position.y + 0.265;
+    return this.anim.pist[i].position.y + this.geo.CH;
+  }
+
+  /** Hauteur de gaz équivalente au-dessus du piston, volume mort compris. */
+  private height(crown: number) {
+    return Math.max(this.top - crown, 0.005) + this.dead;
+  }
+
+  private lifts(cc: number) {
+    const { intake, exhaust } = this.geo;
+    return { a: liftOf(intake, cc) / intake.lift, e: liftOf(exhaust, cc) / exhaust.lift };
+  }
+
+  private cycle(psi: number, i: number) {
+    return cycleAngle(psi, this.geo.offsets[i]);
   }
 
   private place(i: number, k: number, crown: number, top: number, burnt: boolean, flame: number) {
     const pos = this.pos;
     const a = Math.random() * 6.2832;
-    const r = R * Math.sqrt(Math.random());
+    const r = this.R * Math.sqrt(Math.random());
     const id = i * M + k;
     const o = id * 3;
-    pos[o] = XS[i] + Math.cos(a) * r;
+    pos[o] = this.geo.cylX[i] + Math.cos(a) * r;
     pos[o + 1] = crown + Math.random() * (top - crown);
     pos[o + 2] = Math.sin(a) * r;
     const th = Math.random() * 6.2832;
@@ -154,19 +243,20 @@ export class GasSim {
   }
 
   init(psi: number) {
-    const top = HEADBOT - 0.012;
-    for (let i = 0; i < 4; i++) {
-      const cc = cycleAngle(psi, i);
+    const top = this.top;
+    const HB = this.HB;
+    for (let i = 0; i < this.cyls; i++) {
+      const cc = this.cycle(psi, i);
       const st = Math.floor(cc / 180);
       const crown = this.crown(i);
-      const h = Math.max(top - crown, 0.02);
+      const h = this.height(crown);
       const n = [55, 100, 100, 45][st];
       for (let k = 0; k < n; k++) this.place(i, k, crown, top, st >= 2, st === 2 ? 0.5 : 0);
       this.n[i] = n;
       this.hPrev[i] = h;
       this.cPrev[i] = cc;
       this.crownPrev[i] = crown;
-      this.T[i] = st === 0 ? 1.1 : st === 1 ? Math.pow(HB / h, 0.35) : st === 2 ? 3.5 * Math.pow(0.07 / h, 0.35) : 1.8;
+      this.T[i] = st === 0 ? 1.1 : st === 1 ? Math.pow(HB / h, 0.35) : st === 2 ? 2.8 * Math.pow((HB / h) * 0.1, 0.35) : 1.8;
     }
   }
 
@@ -192,30 +282,29 @@ export class GasSim {
 
   /** dt : secondes écoulées ; ds : degrés vilebrequin parcourus pendant dt. */
   step(dt: number, ds: number, psi: number, cut: boolean) {
-    const top = HEADBOT - 0.012;
+    const { top, HB, R } = this;
+    const spark = this.geo.spark;
     const sub = 2;
     const sdt = dt / sub;
     const { vel, alive, jit, burnt, flame } = this;
     const pos = this.pos;
-    const ga = this.points.geometry.attributes;
-    const size = ga.aSize.array as Float32Array;
-    const col = ga.aColor.array as Float32Array;
+    const size = this.simSize;
+    const col = this.simCol;
     const c = this.tmp;
-    this.uniforms.uCut.value = cut ? 1 : 0;
+    this.cut.value = cut ? 1 : 0;
 
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < this.cyls; i++) {
       const base = i * M;
-      const cc = cycleAngle(psi, i);
+      const cc = this.cycle(psi, i);
       const crown = this.crown(i);
-      const h = Math.max(top - crown, 0.02);
-      const liA = liftAt(cc, INTAKE_PEAK) / LIFT;
-      const liE = liftAt(cc, EXHAUST_PEAK) / LIFT;
+      const h = this.height(crown);
+      const { a: liA, e: liE } = this.lifts(cc);
       const vp = dt > 0 ? (crown - this.crownPrev[i]) / dt : 0;
 
       let T = this.T[i];
       if (liA < 0.001 && liE < 0.001 && ds > 0) T *= Math.pow(this.hPrev[i] / h, 0.35);
-      const spark = ds > 0 && this.cPrev[i] <= 355 && cc > 355 && cc < 420;
-      if (spark) T *= 3.5;
+      const fired = ds > 0 && this.cPrev[i] <= spark && cc > spark && cc < spark + 65;
+      if (fired) T *= 2.8;
       if (liE > 0) T += (1.7 - T) * Math.min(1, ds * 0.04 * liE);
       if (liA > 0) T += (1.05 - T) * Math.min(1, ds * 0.04 * liA);
       T = Math.min(14, Math.max(0.9, T));
@@ -237,7 +326,7 @@ export class GasSim {
         const o = id * 3;
         const a = Math.random() * 6.28;
         const r = Math.random() * 0.08;
-        pos[o] = XS[i] + jx + Math.cos(a) * r;
+        pos[o] = this.geo.cylX[i] + jx + Math.cos(a) * r;
         pos[o + 1] = top - 0.01;
         pos[o + 2] = 0.27 + Math.sin(a) * r;
         vel[o] = (Math.random() - 0.5) * 0.4;
@@ -261,7 +350,7 @@ export class GasSim {
           size[id] = 0;
           continue;
         }
-        if (spark) {
+        if (fired) {
           burnt[id] = 1;
           flame[id] = 1;
         } else flame[id] *= fade;
@@ -279,14 +368,14 @@ export class GasSim {
           pos[o] += vel[o] * sdt * speed;
           pos[o + 1] += vel[o + 1] * sdt * speed;
           pos[o + 2] += vel[o + 2] * sdt * speed;
-          const dx = pos[o] - XS[i];
+          const dx = pos[o] - this.geo.cylX[i];
           const dz = pos[o + 2];
           const r2 = dx * dx + dz * dz;
           if (r2 > R * R) {
             const r = Math.sqrt(r2);
             const nx = dx / r;
             const nz = dz / r;
-            pos[o] = XS[i] + nx * R;
+            pos[o] = this.geo.cylX[i] + nx * R;
             pos[o + 2] = nz * R;
             const vn = vel[o] * nx + vel[o + 2] * nz;
             if (vn > 0) {
@@ -335,9 +424,7 @@ export class GasSim {
       /* la chaleur des tubulures retombe entre deux bouffées */
       this.heat[i] *= Math.exp(-ds * 0.0035);
     }
-    ga.position.needsUpdate = true;
-    ga.aColor.needsUpdate = true;
-    ga.aSize.needsUpdate = true;
+    this.publish();
 
     this.stepExhaust(ds);
   }
@@ -392,7 +479,7 @@ export class GasSim {
   }
 
   dispose() {
-    [this.points, this.exhaustPoints].forEach((p) => {
+    [...this.bankPoints, this.exhaustPoints].forEach((p) => {
       p.geometry.dispose();
       (p.material as THREE.Material).dispose();
     });

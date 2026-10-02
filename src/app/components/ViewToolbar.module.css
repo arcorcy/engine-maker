@@ -24,8 +24,10 @@
 .toolbar {
   pointer-events: auto;
   max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: none;
+}
+
+.toolbar > * {
+  flex-shrink: 0;
 }
 
 .control {
@@ -36,25 +38,17 @@
   color: var(--color-label-secondary);
 }
 
-.value {
-  min-width: 7.5ch;
-  font: var(--text-footnote);
-  font-weight: 500;
-  color: var(--color-label);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
 .slider {
   width: 112px;
+}
+
+.menuSlider {
+  width: 140px;
 }
 
 @media (max-width: 1279px) {
   .slider {
     width: 84px;
-  }
-  .optional {
-    display: none;
   }
 }
 
@@ -67,7 +61,6 @@
   .slider {
     width: 64px;
   }
-  .value,
   .control > svg {
     display: none;
   }

@@ -8,6 +8,7 @@ export { IconButton, type IconButtonProps } from './components/IconButton/IconBu
 export { Tooltip, type TooltipProps } from './components/Tooltip/Tooltip';
 export { SegmentedControl, type SegmentedControlProps, type SegmentedOption } from './components/SegmentedControl/SegmentedControl';
 export { Slider, type SliderProps } from './components/Slider/Slider';
+export { NumberField, type NumberFieldProps } from './components/NumberField/NumberField';
 export { SearchField, type SearchFieldProps } from './components/SearchField/SearchField';
 export { Badge, type BadgeProps } from './components/Badge/Badge';
 export { Surface, type SurfaceProps } from './components/Surface/Surface';
@@ -16,3 +17,9 @@ export { SectionHeader, type SectionHeaderProps } from './components/SectionHead
 export { Readout, type ReadoutProps } from './components/Readout/Readout';
 export { Meter, type MeterProps } from './components/Meter/Meter';
 export { Toolbar, ToolbarGroup, ToolbarSeparator, type ToolbarProps } from './components/Toolbar/Toolbar';
+export { TextField, type TextFieldProps } from './components/TextField/TextField';
+export { Notice, type NoticeProps } from './components/Notice/Notice';
+export { Dialog, type DialogProps } from './components/Dialog/Dialog';
+export { ChoiceList, type ChoiceListProps, type Choice } from './components/ChoiceList/ChoiceList';
+export { Menu, MenuItem, MenuRow, MenuSeparator, type MenuProps, type MenuItemProps } from './components/Menu/Menu';
+export { Sheet, type SheetProps } from './components/Sheet/Sheet';

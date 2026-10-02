@@ -1,0 +1,53 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--control-sm);
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-fill);
+  color: var(--color-label);
+  cursor: text;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.root:hover {
+  background: var(--color-fill-hover);
+}
+
+.root:focus-within {
+  background: var(--color-bg-elevated);
+  box-shadow: 0 0 0 3px var(--color-focus);
+}
+
+.input {
+  align-self: stretch;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: var(--text-subheadline);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  outline: none;
+}
+
+.unit {
+  flex: none;
+  font: var(--text-footnote);
+  color: var(--color-label-secondary);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.danger .input {
+  color: var(--color-danger);
+}
+
+.invalid {
+  box-shadow: inset 0 0 0 1px var(--color-danger);
+}

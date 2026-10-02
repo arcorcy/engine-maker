@@ -14,6 +14,12 @@ function stored(): Theme | null {
   }
 }
 
+/** Applique dès le chargement le thème choisi par l'utilisateur, quelle que soit la page d'arrivée. */
+export function applyStoredTheme() {
+  const forced = stored();
+  if (forced) document.documentElement.dataset.theme = forced;
+}
+
 /** Thème effectif : choix mémorisé de l'utilisateur, sinon celui du système. */
 export function useTheme(): [Theme, () => void] {
   const [theme, setTheme] = useState<Theme>(() => stored() ?? systemTheme());

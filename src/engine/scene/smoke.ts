@@ -70,15 +70,16 @@ export class SmokeSim {
 
   /**
    * kind : type de fumée, ou null pour arrêter l'émission (les bouffées en vol finissent leur course).
-   * origin : bout du tuyau ; rate : bouffées par seconde.
+   * origins : bouts des tuyaux (un par banc) ; rate : bouffées par seconde et par sortie.
    */
-  step(dt: number, kind: Smoke | null, origin: THREE.Vector3, rate: number) {
+  step(dt: number, kind: Smoke | null, origins: THREE.Vector3[], rate: number) {
     if (kind) {
       const look = COLORS[kind];
-      this.acc += rate * dt;
+      this.acc += rate * dt * origins.length;
       while (this.acc >= 1) {
         this.acc -= 1;
         const k = this.next;
+        const origin = origins[k % origins.length];
         this.next = (this.next + 1) % N;
         const o = k * 3;
         this.pos[o] = origin.x;

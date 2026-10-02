@@ -1,15 +1,15 @@
+import { createSpec } from '../spec/catalog';
+
+/** Moteur de référence, ouvert en lecture seule et point de départ des moteurs créés. */
+export const REFERENCE_SPEC = createSpec('i4-dohc-16v', '1.6 16 soupapes');
+
 /* Voiture fictive : compacte 1.6 essence, boîte 6 vitesses, pneus 205/55 R16 (circonférence de roulement 1,985 m) */
 export const CAR = {
   name: 'Compacte 1.6 essence',
   gears: [0, 3.62, 1.95, 1.28, 0.95, 0.76, 0.63],
   finalDrive: 3.94,
   circ: 1.985,
-  stroke: 0.0775,
   idle: 800,
-  redline: 6500,
-  /** Seuil de la zone rouge du compte-tours. */
-  red: 6000,
-  maxScale: 7000,
 } as const;
 
 export const GEAR_LABEL = ['N', '1', '2', '3', '4', '5', '6'] as const;
@@ -39,8 +39,6 @@ export const speedKmh = (rpm: number, gear: number) => {
 };
 
 export const rpmFor = (p: Preset) => (p.kmh ? (p.kmh / 3.6 / CAR.circ) * 60 * ratioOf(p.gear) : (p.rpm ?? CAR.idle));
-
-export const clampRpm = (v: number) => Math.min(CAR.redline, Math.max(CAR.idle, Math.round(v / 50) * 50));
 
 export const fmt = (n: number, d = 0) => n.toLocaleString('fr-FR', { maximumFractionDigits: d, minimumFractionDigits: d });
 

@@ -1,0 +1,62 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.label {
+  font: var(--text-footnote);
+  font-weight: 500;
+  color: var(--color-label-secondary);
+}
+
+.input {
+  height: var(--control-md);
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-fill);
+  color: var(--color-label);
+  font: var(--text-callout);
+  outline: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.input:hover {
+  background: var(--color-fill-hover);
+}
+
+.input:focus {
+  background: var(--color-bg-elevated);
+  box-shadow: 0 0 0 3px var(--color-focus);
+}
+
+.input::placeholder {
+  color: var(--color-label-tertiary);
+}
+
+/* variante titre : se lit comme un titre tant qu'on ne l'édite pas */
+.title .input {
+  height: auto;
+  padding: 2px 8px;
+  margin-left: -8px;
+  background: transparent;
+  font: var(--text-title-1);
+  letter-spacing: var(--tracking-display);
+}
+
+.title .input:hover {
+  background: var(--color-fill);
+}
+
+.invalid .input {
+  box-shadow: inset 0 0 0 1px var(--color-danger);
+}
+
+.message {
+  font: var(--text-footnote);
+  color: var(--color-danger);
+}

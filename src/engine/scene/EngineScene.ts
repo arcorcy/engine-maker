@@ -7,7 +7,9 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { FAIL } from '../data/failures';
 import { PART, PARTS } from '../data/parts';
 import { isPartVisible, useEngine, useTelemetry, type EngineState } from '../../app/state/store';
-import { cycleAngle, buildEngine, setPose, TAILPIPE, type PartNode } from './model';
+import type { EngineSpec } from '../spec';
+import { cycleAngle, geometryFor, type EngineGeometry } from './geometry';
+import { buildEngine, setPose, type PartNode } from './model';
 import { SmokeSim } from './smoke';
 import { GasSim } from './gas';
 import { PANEL } from '../../app/layout';
@@ -61,13 +63,19 @@ export class EngineScene {
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(32, 1, 0.1, 400);
-  private model = buildEngine();
-  private gas: GasSim;
+  private spec: EngineSpec;
+  private geo: EngineGeometry;
+  private model!: ReturnType<typeof buildEngine>;
+  private gas!: GasSim;
+  private uPx = { value: 600 };
   private smoke: SmokeSim;
   /** Échauffement global de la ligne, lié au régime, qui suit lentement. */
   private thermal = 0;
-  private tailpipe = new THREE.Vector3();
+  private tailpipes: THREE.Vector3[] = [];
+  /** Plan de coupe du bas moteur (z > 0 retiré). */
   private clip = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
+  /** Un plan de coupe par banc, passant par l'axe des cylindres et celui du vilebrequin. */
+  private bankClips: THREE.Plane[] = [];
   private shadow = contactShadow();
   private leader: THREE.LineSegments<THREE.BufferGeometry, THREE.LineBasicMaterial>;
   private rest: Record<string, { box: THREE.Box3; c: THREE.Vector3 }> = {};
@@ -116,25 +124,19 @@ export class EngineScene {
     rim.position.set(8, 4, -9);
     this.scene.add(key, rim, new THREE.HemisphereLight(0xffffff, 0x8a8a90, 0.35));
 
-    const { root, parts, anim, gasGroup } = this.model;
-    this.scene.add(root, this.shadow);
-    this.gas = new GasSim(anim, this.model.exhaust);
-    gasGroup.add(this.gas.points, this.gas.exhaustPoints);
-    this.smoke = new SmokeSim(this.gas.uniforms.uPx);
+    this.scene.add(this.shadow);
+    this.smoke = new SmokeSim(this.uPx);
     this.scene.add(this.smoke.points);
+    this.spec = useEngine.getState().spec;
+    this.geo = geometryFor(this.spec);
+    this.mount();
 
-    PARTS.forEach((d) => {
-      const b = new THREE.Box3().setFromObject(parts[d.id].group);
-      this.rest[d.id] = { box: b, c: b.getCenter(new THREE.Vector3()) };
-    });
     const lg = new THREE.BufferGeometry();
     lg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(PARTS.length * 6), 3));
     this.leader = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ transparent: true, opacity: 0.5 }));
     this.leader.frustumCulled = false;
     this.scene.add(this.leader);
 
-    setPose(anim, this.psi);
-    this.gas.init(this.psi);
     this.applyTheme();
     this.bindPointer();
 
@@ -164,7 +166,6 @@ export class EngineScene {
   dispose() {
     cancelAnimationFrame(this.raf);
     this.cleanups.forEach((f) => f());
-    this.gas.dispose();
     this.smoke.dispose();
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
@@ -175,6 +176,43 @@ export class EngineScene {
     });
     this.scene.environment?.dispose();
     this.renderer.dispose();
+  }
+
+  /* ---------- Construction du moteur, et reconstruction quand ses pièces changent ---------- */
+
+  private mount(previous?: Record<string, PartNode>) {
+    this.model = buildEngine(this.geo);
+    const { root, parts, anim, gasGroup } = this.model;
+    this.scene.add(root);
+    this.gas = new GasSim(anim, this.model.exhaust, this.geo, this.uPx);
+    this.gas.bankPoints.forEach((pts, b) => this.model.gasBanks[b].add(pts));
+    gasGroup.add(this.gas.exhaustPoints);
+    this.bankClips = this.geo.banks.map((bk) => new THREE.Plane(new THREE.Vector3(0, Math.sin(bk.angle), -Math.cos(bk.angle)), 0));
+    PARTS.forEach((d) => {
+      const b = new THREE.Box3().setFromObject(parts[d.id].group);
+      this.rest[d.id] = { box: b, c: b.getCenter(new THREE.Vector3()) };
+      if (previous) parts[d.id].cur = previous[d.id].cur;
+    });
+    setPose(anim, this.psi, this.geo);
+    this.gas.init(this.psi);
+    /* les nouveaux matériaux doivent recevoir la coupe et le mode de couleur */
+    this.applied.cut = undefined;
+    this.applied.colorMode = undefined;
+  }
+
+  private rebuild(spec: EngineSpec) {
+    const previous = this.model.parts;
+    this.scene.remove(this.model.root);
+    this.model.root.traverse((o) => {
+      const m = o as THREE.Mesh;
+      m.geometry?.dispose();
+      const mat = m.material as THREE.Material | THREE.Material[] | undefined;
+      if (Array.isArray(mat)) mat.forEach((x) => x.dispose());
+      else mat?.dispose();
+    });
+    this.spec = spec;
+    this.geo = geometryFor(spec);
+    this.mount(previous);
   }
 
   /* ---------- Thème, matériaux, coupe ---------- */
@@ -198,14 +236,18 @@ export class EngineScene {
   }
 
   private setCut(on: boolean) {
+    const plane = (m: THREE.Material) => {
+      const b = m.userData.bank as number | undefined;
+      return b !== undefined && b >= 0 ? this.bankClips[b] : this.clip;
+    };
     const apply = (m: THREE.Material) => {
-      m.clippingPlanes = on ? [this.clip] : null;
+      m.clippingPlanes = on ? [plane(m)] : null;
       m.side = on ? THREE.DoubleSide : THREE.FrontSide;
       m.needsUpdate = true;
     };
     Object.values(this.model.parts).forEach((p) => p.mats.forEach(apply));
     this.model.anim.gas.forEach((g) => {
-      g.material.clippingPlanes = on ? [this.clip] : null;
+      g.material.clippingPlanes = on ? [plane(g.material)] : null;
       g.material.needsUpdate = true;
     });
   }
@@ -233,7 +275,7 @@ export class EngineScene {
     const h = this.stage.clientHeight;
     if (!w || !h) return;
     this.renderer.setSize(w, h, false);
-    this.gas.uniforms.uPx.value = this.renderer.domElement.height / (2 * Math.tan((this.camera.fov * D2R) / 2));
+    this.uPx.value = this.renderer.domElement.height / (2 * Math.tan((this.camera.fov * D2R) / 2));
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
   }
@@ -412,16 +454,16 @@ export class EngineScene {
     const target = s.play ? 0.12 + (0.6 * s.rpm) / 6500 : this.thermal;
     this.thermal += (target - this.thermal) * (1 - Math.exp(-dt * 0.3));
     const { heat } = this.model;
-    const mean = this.gas.heat.reduce((a, b) => a + b, 0) / 4;
+    const mean = this.gas.heat.reduce((a, b) => a + b, 0) / this.gas.heat.length;
     const set = (m: THREE.MeshStandardMaterial, v: number) => {
       m.emissive.copy(C_HEAT);
       m.emissiveIntensity = 1.25 * v * v;
     };
     if (free.has('echappement')) {
       heat.runners.forEach((m, i) => set(m, this.runnerGlow(this.gas.heat[i])));
-      set(heat.pipe, Math.min(1, 0.4 * this.thermal + 0.35 * mean));
+      heat.pipes.forEach((m) => set(m, Math.min(1, 0.4 * this.thermal + 0.35 * mean)));
     }
-    if (free.has('catalyseur')) set(heat.cat, Math.min(1, 0.3 * this.thermal + 0.2 * mean));
+    if (free.has('catalyseur')) heat.cats.forEach((m) => set(m, Math.min(1, 0.3 * this.thermal + 0.2 * mean)));
   }
 
   private stepSmoke(s: EngineState, dt: number, e: number) {
@@ -433,14 +475,17 @@ export class EngineScene {
     }
     this.smoke.points.visible = true;
     const o = PART.catalyseur.exp;
-    this.tailpipe.set(TAILPIPE[0] + o[0] * e, TAILPIPE[1] + o[1] * e, TAILPIPE[2] + o[2] * e);
-    this.smoke.step(dt, on, this.tailpipe, s.play ? 10 + s.rpm / 160 : 7);
+    this.tailpipes = this.model.tailpipes.map((tp, k) =>
+      (this.tailpipes[k] ?? new THREE.Vector3()).set(tp[0] + o[0] * e, tp[1] + o[1] * e, tp[2] + o[2] * e),
+    );
+    this.smoke.step(dt, on, this.tailpipes, s.play ? 10 + s.rpm / 160 : 7);
   }
 
   /* ---------- Boucle ---------- */
 
   private frame = (now: number) => {
     const s = useEngine.getState();
+    if (s.spec !== this.spec) this.rebuild(s.spec);
     const { parts, anim, gasGroup } = this.model;
     const dt = Math.max(0, Math.min((now - this.last) / 1000, 0.05));
     this.last = now;
@@ -468,7 +513,7 @@ export class EngineScene {
       const n = gasGroup.visible ? Math.min(100, Math.max(1, Math.ceil(ds / 5))) : 1;
       for (let k = 0; k < n; k++) {
         this.psi = (this.psi + ds / n) % 720;
-        setPose(anim, this.psi);
+        setPose(anim, this.psi, this.geo);
         if (gasGroup.visible) this.gas.step(dt / n, ds / n, this.psi, s.cut);
       }
     } else if (gasGroup.visible) this.gas.step(dt, 0, this.psi, s.cut);
@@ -477,7 +522,7 @@ export class EngineScene {
       this.lastTelemetry = now;
       useTelemetry.setState({
         psi: this.psi,
-        strokes: [0, 1, 2, 3].map((i) => Math.floor(cycleAngle(this.psi, i) / 180)),
+        strokes: this.geo.offsets.map((off) => Math.floor(cycleAngle(this.psi, off) / 180)),
         pressures: this.gas.p.map((p) => Math.round(p)),
         trace: Array.from(this.gas.trace),
         heat: this.gas.heat.map((h) => this.runnerGlow(h)),

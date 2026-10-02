@@ -16,7 +16,7 @@ export interface Part {
 
 export const PARTS: Part[] = [
  { id:'bloc', name:'Bloc-cylindres', sys:'str', qty:1, exp:[0,0,0], mat:'Fonte ou alliage d\'aluminium',
-   role:'Colonne vertébrale du moteur. Il contient les quatre cylindres où coulissent les pistons et porte le vilebrequin dans son carter inférieur.',
+   role:'Colonne vertébrale du moteur. Il contient les cylindres où coulissent les pistons et porte le vilebrequin dans son carter inférieur.',
    how:'Les alésages guident les pistons avec un jeu de quelques centièmes de millimètre. Des canaux internes font circuler le liquide de refroidissement et l\'huile sous pression. Tout l\'effort de combustion s\'y encaisse.',
    fails:['joint','segments','refroid'] },
  { id:'joint', name:'Joint de culasse', sys:'str', qty:1, exp:[0,1.4,0], mat:'Multicouche acier ou composite',
@@ -49,8 +49,8 @@ export const PARTS: Part[] = [
    how:'Le petit œil s\'articule sur l\'axe du piston, le grand œil sur un maneton du vilebrequin, par un coussinet à film d\'huile. Elle subit alternativement compression et traction.',
    fails:['huile'] },
  { id:'vilo', name:'Vilebrequin', sys:'mob', qty:1, exp:[0,-1.3,0], mat:'Acier forgé ou fonte GS',
-   role:'Arbre coudé qui récupère l\'effort des quatre bielles et le transforme en couple moteur.',
-   how:'Les manetons sont décalés : 1 et 4 en haut quand 2 et 3 sont en bas. Les contrepoids équilibrent les masses. Il tourne sur cinq paliers lubrifiés et entraîne la distribution à l\'avant, le volant à l\'arrière.',
+   role:'Arbre coudé qui récupère l\'effort de toutes les bielles et le transforme en couple moteur.',
+   how:'Les manetons sont décalés pour que les cylindres s\'allument à intervalles réguliers ; sur un V, chaque coude porte les bielles de deux cylindres en vis-à-vis. Les contrepoids équilibrent les masses. Il tourne sur des paliers lubrifiés et entraîne la distribution à l\'avant, le volant à l\'arrière.',
    fails:['huile'] },
  { id:'volant', name:'Volant moteur', sys:'mob', qty:1, exp:[1.6,-1.3,0], mat:'Fonte ou acier',
    role:'Disque lourd fixé à l\'arrière du vilebrequin. Il lisse les à-coups des temps moteurs et reçoit l\'embrayage.',
@@ -100,7 +100,7 @@ export const PARTS: Part[] = [
    fails:['injecteurs','riche'] },
 
  { id:'admission', name:'Collecteur d\'admission', sys:'air', qty:1, exp:[0,1.0,2.4], mat:'Plastique renforcé ou aluminium',
-   role:'Répartit l\'air frais entre les quatre cylindres, via un répartiteur et quatre tubulures.',
+   role:'Répartit l\'air frais entre les cylindres, via un répartiteur et une tubulure par cylindre. Sur un V, il se loge entre les deux bancs.',
    how:'La forme et la longueur des tubulures règlent les ondes de pression pour mieux remplir les cylindres à certains régimes. Toute entrée d\'air parasite après le débitmètre fausse le mélange.',
    fails:['admission'] },
  { id:'papillon', name:'Boîtier papillon', sys:'air', qty:1, exp:[2.2,1.0,2.4], mat:'Aluminium',
@@ -108,7 +108,7 @@ export const PARTS: Part[] = [
    how:'Un volet pivotant ouvre plus ou moins le passage. Il est piloté par l\'accélérateur ou par un moteur électrique. L\'encrassement par les vapeurs d\'huile perturbe le ralenti.',
    fails:['admission'] },
  { id:'echappement', name:'Collecteur d\'échappement', sys:'air', qty:1, exp:[0,0.2,-2.4], mat:'Fonte ou acier inoxydable',
-   role:'Rassemble les gaz brûlés des quatre cylindres vers un tuyau unique, en direction du catalyseur.',
+   role:'Rassemble les gaz brûlés des cylindres d\'un banc vers un tuyau unique, en direction du catalyseur.',
    how:'Les tubulures de longueurs égales évitent que les pulsations d\'un cylindre gênent l\'évacuation des autres. Il monte à plusieurs centaines de degrés.',
    fails:['soupape','catalyseur'] },
  { id:'catalyseur', name:'Catalyseur', sys:'air', qty:1, exp:[1.4,-0.5,-2.6], mat:'Monolithe céramique en nid d\'abeille, platine, palladium et rhodium, enveloppe inox',
@@ -144,3 +144,14 @@ export const PARTS: Part[] = [
 ];
 
 export const PART: Record<string, Part> = Object.fromEntries(PARTS.map((p) => [p.id, p]));
+
+/** Pièces présentes en plusieurs exemplaires selon l'architecture : par cylindre, ou par banc. */
+const PER_CYLINDER: Record<string, number> = { piston: 1, segments: 3, bielle: 1, sou_adm: 2, sou_ech: 2, ressort: 4, bougie: 1, bobine: 1, injecteur: 1 };
+const PER_BANK: Record<string, number> = { joint: 1, culasse: 1, cache: 1, arb_adm: 1, arb_ech: 1, echappement: 1, catalyseur: 1, sonde_lambda: 2 };
+
+/** Nombre d'exemplaires d'une pièce sur un moteur de `cylinders` cylindres répartis sur `banks` bancs. */
+export function quantity(p: Part, cylinders: number, banks: number) {
+  if (p.id in PER_CYLINDER) return PER_CYLINDER[p.id] * cylinders;
+  if (p.id in PER_BANK) return PER_BANK[p.id] * banks;
+  return p.qty;
+}

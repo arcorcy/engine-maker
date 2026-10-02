@@ -1,6 +1,10 @@
+import { useMemo } from 'react';
 import { Button, Icon, IconButton, ListItem, SearchField, SectionHeader, SegmentedControl, Surface } from '@ds';
+import { getTemplate, getVariant, type SlotId } from '../../engine/spec';
+import { summarize } from '../garage/summary';
 import { FAILS, SEVERITY_LABEL } from '../../engine/data/failures';
-import { PARTS } from '../../engine/data/parts';
+import { PARTS, quantity } from '../../engine/data/parts';
+import { useArchitecture } from '../state/limits';
 import { SYSTEMS } from '../../engine/data/systems';
 import { useEngine, type Tab } from '../state/store';
 import p from './Panel.module.css';
@@ -40,7 +44,22 @@ function PartList({ q }: { q: string }) {
   const sel = useEngine((st) => st.sel);
   const iso = useEngine((st) => st.iso);
   const hidden = useEngine((st) => st.hidden);
+  const spec = useEngine((st) => st.spec);
+  const readOnly = useEngine((st) => st.readOnly);
+  const arch = useArchitecture();
   const { selectPart, toggleHidden, isolateSystem } = useEngine.getState();
+  /* pièces changées par rapport à l'origine, et pièces visées par un problème de cohérence */
+  const { changed, flagged } = useMemo(() => {
+    const t = getTemplate(spec.template);
+    const flagged = new Map<string, 'error' | 'warning'>();
+    if (!readOnly) {
+      for (const i of summarize(spec).validation.issues) {
+        for (const target of i.targets) if (flagged.get(target) !== 'error') flagged.set(target, i.severity);
+      }
+    }
+    const changed = new Set(t ? Object.keys(spec.parts).filter((k) => t.defaults.parts[k as SlotId] !== spec.parts[k as SlotId]) : []);
+    return { changed, flagged };
+  }, [spec, readOnly]);
 
   const groups = SYSTEMS.map((sys) => ({
     sys,
@@ -67,11 +86,21 @@ function PartList({ q }: { q: string }) {
             </SectionHeader>
             {items.map((pt) => {
               const off = hidden.includes(pt.id);
+              const flag = flagged.get(pt.id);
               return (
                 <ListItem
                   key={pt.id}
                   title={pt.name}
-                  meta={`×${pt.qty}`}
+                  subtitle={changed.has(pt.id) ? getVariant(spec.parts[pt.id as SlotId])?.name : undefined}
+                  meta={
+                    <span className={s.meta}>
+                      {flag && (
+                        <Icon name={flag === 'error' ? 'errorCircle' : 'warning'} size={14} className={s[flag]}
+                          label={flag === 'error' ? 'Erreur de cohérence' : 'Avertissement'} />
+                      )}
+                      ×{quantity(pt, arch.cylinders, arch.banks)}
+                    </span>
+                  }
                   selected={sel === pt.id}
                   dimmed={off}
                   onSelect={() => selectPart(pt.id)}

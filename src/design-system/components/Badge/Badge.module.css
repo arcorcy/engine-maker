@@ -12,6 +12,10 @@
   white-space: nowrap;
 }
 
+/* l'icône remplace un peu de marge à gauche */
+.root:has(svg:first-child) { padding-left: 6px; }
+
+.success { background: color-mix(in srgb, var(--color-success) 14%, transparent); color: var(--color-success); }
 .accent { background: var(--color-accent-soft); color: var(--color-accent); }
 .danger { background: var(--color-danger-soft); color: var(--color-danger); }
 .warning { background: var(--color-warning-soft); color: var(--color-warning); }

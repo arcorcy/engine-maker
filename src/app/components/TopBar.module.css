@@ -31,10 +31,44 @@
 .title {
   display: flex;
   flex-direction: column;
-  padding: 0 14px 0 6px;
+  align-items: flex-start;
+  padding: 2px 14px 2px 8px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: inherit;
+  text-align: left;
   line-height: 1.15;
   min-width: 0;
+  max-width: 44vw;
 }
+
+.title:hover {
+  background: var(--color-fill);
+}
+
+.title strong {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.title > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--color-label-tertiary);
+}
+
+.status[data-tone='success'] { color: var(--color-success); }
+.status[data-tone='warning'] { color: var(--color-warning); }
+.status[data-tone='danger'] { color: var(--color-danger); }
 
 .title strong {
   font: var(--text-headline);

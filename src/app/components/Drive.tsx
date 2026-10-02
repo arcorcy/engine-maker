@@ -1,5 +1,6 @@
 import { Badge, Button, Meter, Readout, SegmentedControl, Text } from '@ds';
 import { CAR, GEAR_LABEL, PRESETS, SLOW_OPTIONS, fmt, ratioOf, rpmFor, speedKmh } from '../../engine/data/vehicle';
+import { useEngineLimits } from '../state/limits';
 import { useEngine } from '../state/store';
 import { RoadCanvas } from './RoadCanvas';
 import s from './Drive.module.css';
@@ -15,7 +16,8 @@ export function Drive() {
   const { setGear, applyPreset, setSlow } = useEngine.getState();
   const kmh = speedKmh(rpm, gear);
   const ratio = ratioOf(gear);
-  const red = rpm >= CAR.red;
+  const { red: redZone, stroke, max } = useEngineLimits();
+  const red = rpm >= redZone;
 
   return (
     <div className={s.content}>
@@ -31,9 +33,9 @@ export function Drive() {
         </div>
         <div className={s.rpm}>
           <Readout size="sm" value={fmt(rpm)} unit="tr/min" tone={red ? 'danger' : 'primary'} />
-          <Text variant="footnote" tone="tertiary" as="span">zone rouge {fmt(CAR.red)}</Text>
+          <Text variant="footnote" tone="tertiary" as="span">zone rouge {fmt(redZone)}</Text>
         </div>
-        <Meter label="Régime moteur" value={rpm} min={0} max={CAR.maxScale} high={CAR.red} />
+        <Meter label="Régime moteur" value={rpm} min={0} max={max} high={redZone} />
       </div>
 
       <RoadCanvas className={s.road} />
@@ -71,7 +73,7 @@ export function Drive() {
 
       <div className={s.stats}>
         <Readout size="sm" value={fmt(rpm / 30)} label="combustions par seconde" />
-        <Readout size="sm" value={fmt((2 * CAR.stroke * rpm) / 60, 1)} unit="m/s" label="vitesse moyenne du piston" />
+        <Readout size="sm" value={fmt((2 * stroke * rpm) / 60, 1)} unit="m/s" label="vitesse moyenne du piston" />
         <Readout size="sm" value={ratio ? fmt((2 * CAR.circ) / ratio, 2) : '0'} unit="m" label="parcourus par cycle de 720°" />
       </div>
     </div>

@@ -94,6 +94,53 @@ export const icons = {
   ),
   chevronRight: <path d="M9.5 6l6 6-6 6" />,
   chevronDown: <path d="M6 9.5l6 6 6-6" />,
+  chevronLeft: <path d="M14.5 6l-6 6 6 6" />,
+  plus: <path d="M12 5v14M5 12h14" />,
+  check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
+  checkCircle: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8 12.3l2.7 2.7L16 9.7" />
+    </>
+  ),
+  errorCircle: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7.5v5.5M12 16.2v.1" />
+    </>
+  ),
+  copy: (
+    <>
+      <rect x="8.5" y="8.5" width="11" height="11" rx="2.5" />
+      <path d="M15.5 8.5V6.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2" />
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M4.5 7h15M9.5 7V5.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V7" />
+      <path d="M6.5 7l.8 11.2a2 2 0 0 0 2 1.8h5.4a2 2 0 0 0 2-1.8L17.5 7M10 11v5M14 11v5" />
+    </>
+  ),
+  undo: (
+    <>
+      <path d="M9 14L4.5 9.5 9 5" />
+      <path d="M4.5 9.5H15a4.5 4.5 0 0 1 0 9h-3" />
+    </>
+  ),
+  redo: (
+    <>
+      <path d="M15 14l4.5-4.5L15 5" />
+      <path d="M19.5 9.5H9a4.5 4.5 0 0 0 0 9h3" />
+    </>
+  ),
+  grid: (
+    <>
+      <rect x="4" y="4" width="7" height="7" rx="2" />
+      <rect x="13" y="4" width="7" height="7" rx="2" />
+      <rect x="4" y="13" width="7" height="7" rx="2" />
+      <rect x="13" y="13" width="7" height="7" rx="2" />
+    </>
+  ),
   info: (
     <>
       <circle cx="12" cy="12" r="9" />
@@ -134,6 +181,13 @@ export const icons = {
     </>
   ),
   flame: <path d="M12 21c-3.6 0-6-2.4-6-5.6 0-3.4 2.6-5 3.4-8.4.2-.8 1.2-1 1.6-.3 2.5 3.6 7 5.6 7 8.7 0 3.2-2.4 5.6-6 5.6zM12 21c-1.5 0-2.6-1-2.6-2.5 0-1.8 1.6-2.6 2.6-4.3 1 1.7 2.6 2.5 2.6 4.3 0 1.5-1.1 2.5-2.6 2.5z" />,
+  more: (
+    <g fill="currentColor" stroke="none">
+      <circle cx="5.5" cy="12" r="1.7" />
+      <circle cx="12" cy="12" r="1.7" />
+      <circle cx="18.5" cy="12" r="1.7" />
+    </g>
+  ),
   cube: (
     <>
       <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" />

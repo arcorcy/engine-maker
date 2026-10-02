@@ -77,6 +77,10 @@
   .hud {
     top: 68px;
   }
+  /* les panneaux se superposent à la vue : le bandeau s'efface pour ne pas les chevaucher */
+  .hud[data-crowded='true'] {
+    opacity: 0;
+  }
   .angle,
   .bar {
     display: none;
@@ -88,4 +92,17 @@
   .stroke {
     display: none;
   }
+}
+
+/* au-delà de quatre cylindres, seules les pastilles restent : leur couleur donne le temps, l'infobulle le détail */
+.hud[data-compact='true'] .stroke,
+.hud[data-compact='true'] .bar {
+  display: none;
+}
+.hud[data-compact='true'] .cyl {
+  grid-template-columns: auto;
+  padding: 3px;
+}
+.hud[data-compact='true'] {
+  pointer-events: auto;
 }

@@ -7,7 +7,7 @@ const meta = {
   component: Badge,
   tags: ['autodocs'],
   args: { children: 'Quantité 4', tone: 'neutral' },
-  argTypes: { tone: { control: 'inline-radio', options: ['neutral', 'accent', 'danger', 'warning'] } },
+  argTypes: { tone: { control: 'inline-radio', options: ['neutral', 'accent', 'success', 'danger', 'warning'] } },
 } satisfies Meta<typeof Badge>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -22,6 +22,15 @@ export const Gravites: Story = {
       <Badge tone="danger">Gravité élevée</Badge>
       <Badge tone="danger">Gravité critique</Badge>
       <Badge tone="accent">Sélection</Badge>
+    </div>
+  ),
+};
+export const Statuts: Story = {
+  render: () => (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <Badge tone="success" icon="checkCircle">Cohérent</Badge>
+      <Badge tone="warning" icon="warning">2 avertissements</Badge>
+      <Badge tone="danger" icon="errorCircle">1 erreur</Badge>
     </div>
   ),
 };
